@@ -1,0 +1,524 @@
+/* Base Modal Structure */
+.card-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+  overflow-y: auto;
+  padding: 20px;
+  isolation: isolate;
+}
+
+.card-modal {
+  background-color: var(--secondary-bg);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 700px;
+  min-height: 500px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 100001;
+  transform: translateZ(0);
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateZ(0);
+  }
+}
+
+/* Modal Sections */
+.card-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.card-modal-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.card-modal-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.card-modal-footer {
+  padding: 20px 24px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Consolidated Button Styles */
+.btn {
+  padding: 10px 16px;
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  min-width: 80px;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-danger {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--accent-red);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--accent-yellow);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Form Elements */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.card-input, .card-textarea, .card-date-input,
+.card-priority-select, .card-type-select,
+.label-input, .checklist-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.card-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Unified Status Badge */
+.status-badge {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--border-radius);
+  display: inline-flex;
+  align-items: center;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+/* Priority Colors */
+.priority-emergency {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--accent-red);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.priority-date-sensitive {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--accent-yellow);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.priority-normal {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: var(--primary);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Type Colors */
+.type-bug {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--accent-red);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.type-feature {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.type-task {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: var(--primary);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .card-modal {
+    width: 95%;
+    max-height: 90vh;
+    min-height: auto;
+  }
+  
+  .card-modal-footer {
+    flex-direction: column-reverse;
+    gap: 16px;
+  }
+  
+  .card-modal-actions, .card-modal-danger-zone {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .btn {
+    padding: 12px 16px;
+    font-size: 1rem;
+  }
+}
+
+/* Utility Classes */
+body.modal-open {
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  color: var(--text-primary);
+}
+
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Form Layout */
+.form-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* Label Styles */
+.labels-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.label-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  background-color: var(--secondary-bg);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.color-dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+}
+
+.color-input {
+  width: 3rem;
+  padding: 0;
+  height: 2.3rem;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+/* Checklist Styles */
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: var(--secondary-bg);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.checkbox {
+  width: 1.2rem;
+  height: 1.2rem;
+  cursor: pointer;
+}
+
+.completed {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+/* Icon Button */
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.2rem;
+  font-size: 1.2rem;
+  line-height: 1;
+  margin-left: auto;
+}
+
+.btn-icon:hover {
+  color: var(--text-primary);
+}
+
+/* Two-column layout for edit mode */
+.edit-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.edit-layout-row {
+  display: grid;
+  grid-template-columns: 1fr 5fr;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.edit-field-label {
+  padding-top: 0.5rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.edit-field-content {
+  margin-bottom: 0.5rem;
+}
+
+/* Adjust to single column on smaller screens */
+@media (max-width: 768px) {
+  .edit-layout-row {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+  
+  .edit-field-label {
+    padding-top: 0;
+    margin-bottom: 0.3rem;
+  }
+  
+  .edit-field-content {
+    margin-bottom: 1rem;
+  }
+}
+
+/* Display mode styling */
+.card-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  gap: 1rem;
+}
+
+.card-field {
+  text-align: left;
+}
+
+.card-field h4 {
+  margin: 0 0 0.5rem 0;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.card-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  width: 100%;
+  text-align: left;
+}
+
+.card-description {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.75rem;
+  border-radius: var(--border-radius);
+  text-align: left;
+  white-space: pre-wrap;
+}
+
+.card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+  width: 100%;
+}
+
+/* Added for priority and type to display side by side */
+.card-meta-row {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  width: 100%;
+}
+
+.card-meta-row .card-field {
+  flex: 1;
+}
+
+/* Styles for the assigned users */
+.assigned-users-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.assigned-user-item {
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.9em;
+}
+
+.assigned-user-item .btn-icon {
+  margin-left: 6px;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 1.2em;
+  padding: 0 4px;
+}
+
+.assigned-user-item .btn-icon:hover {
+  color: #e74c3c;
+}
+
+/* AI generation styles */
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.error-message {
+  color: var(--accent-red);
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border-radius: var(--border-radius);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Disabled button style */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Add these styles to CardModal.css */
+.movement-history {
+  margin-top: 15px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.movement-history h4 {
+  margin: 0;
+  padding: 10px 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.movement-list {
+  margin: 0;
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 10px 15px;
+  list-style-type: none;
+}
+
+.movement-list li {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.movement-list li:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.movement-date {
+  margin-left: 8px;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.moved-by {
+  margin-left: 8px;
+  font-size: 0.85em;
+  font-style: italic;
+  color: var(--text-secondary);
+}

@@ -1,0 +1,47 @@
+
+/* ExpeditePane Styles */
+.column-expedite-lane {
+  background-color: rgba(231, 76, 60, 0.08);
+  padding: 12px;
+  width: calc(var(--column-width) - 24px);
+}
+
+.column-expedite-lane.dropping-zone {
+  background-color: rgba(231, 76, 60, 0.2);
+  border-color: rgba(231, 76, 60, 0.8);
+}
+
+.expedite-header {
+  margin-bottom: 10px;
+}
+
+.expedite-header h3 {
+  color: #cc0000;
+  margin: 0 0 4px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.expedite-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: rgba(204, 0, 0, 0.8);
+}
+
+.expedite-count {
+  font-weight: bold;
+}
+
+.expedite-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Ensure cards in the expedite pane have correct sizing */
+.expedite-cards .card {
+  width: var(--card-standard-width);
+  margin: 0 auto 8px auto;
+}

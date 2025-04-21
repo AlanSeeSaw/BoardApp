@@ -1,0 +1,415 @@
+/* Card Styles */
+:root {
+  /* Core colors */
+  --primary-bg: #1a1b1e;
+  --card-bg: #2a2d35;
+  --card-hover: #32363f;
+  --text-primary: #e2e4e9;
+  --text-secondary: #9da1a8;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --primary: #2563eb;
+  
+  /* Status colors */
+  --success: #2ecc71;
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  
+  /* Measurements */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 0.75rem;
+  --card-standard-width: 240px; /* Standard width for all cards */
+  --column-width: 280px;
+  --card-width: var(--card-standard-width);
+  --card-max-height: 300px;
+}
+
+/* Base Card */
+.card {
+  position: relative;
+  background: var(--card-bg);
+  border-radius: 6px;
+  padding: var(--spacing-md);
+  margin: var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  width: var(--card-standard-width);
+  max-width: var(--card-standard-width);
+  max-height: var(--card-max-height);
+  overflow-y: auto;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+/* Card States */
+.card:hover { background: var(--card-hover); }
+.card.selected { border-color: var(--primary); }
+.card.dragging { cursor: grabbing; }
+.card.expedited { 
+  border-left: 3px solid var(--danger); 
+  background-color: rgba(231, 76, 60, 0.05); /* Slight red tint */
+}
+
+/* Card Elements */
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* Typography */
+.card-header h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.card-description {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+/* Ensure ReactMarkdown content doesn't overflow */
+.card-description p, 
+.card-description ul, 
+.card-description ol,
+.card-description pre {
+  margin: 0.3rem 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Ensure images in cards don't overflow */
+.card-description img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Labels */
+.card-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.card-label {
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* Priority Indicators */
+.card-priority {
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 500;
+}
+
+.card-priority.emergency { background: var(--danger); }
+.card-priority.date-sensitive { background: var(--warning); }
+
+/* Utilities */
+.checklist-progress {
+  height: 2px;
+  background: var(--border-color);
+  border-radius: 1px;
+}
+
+.checklist-progress-bar {
+  height: 100%;
+  background: var(--success);
+  transition: width 0.3s ease;
+}
+
+/* Card Header */
+.card-header {
+  margin-bottom: 0.25rem; /* Reduced from 0.5rem */
+}
+
+/* Card Type Badge */
+.card-type-badge {
+  display: flex;
+  gap: 0.25rem; /* Reduced from 0.5rem */
+  align-items: center;
+  margin-bottom: 0.25rem; /* Reduced from 0.5rem */
+  font-size: 0.75rem;
+}
+
+.card-type-text {
+  font-size: 0.7rem; /* Reduced from 0.75rem */
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+/* Simplified Card Actions - Hidden by default, show on hover */
+.card-actions {
+  display: none; /* Hide by default */
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  gap: 4px;
+}
+
+.card-actions button {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  padding: 0;
+  border-radius: 3px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+
+.card-actions button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+}
+
+/* Card Labels */
+.card-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px; /* Reduced from 4px */
+  margin: 4px 0; /* Reduced from 8px 0 */
+}
+
+.card-label {
+  font-size: 10px; /* Reduced from 11px */
+  padding: 1px 4px; /* Reduced from 2px 6px */
+  border-radius: 2px; /* Reduced from 3px */
+  font-weight: 500;
+}
+
+/* Due Date */
+.card-due-date {
+  font-size: 11px; /* Reduced from 12px */
+  color: #b0b0b0;
+  margin-top: 4px; /* Reduced from 8px */
+  display: inline-block;
+}
+
+.card-due-date.overdue {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* Checklist */
+.card-checklist {
+  margin-top: 4px; /* Reduced from 8px */
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 3px; /* Reduced from 4px */
+  padding: 4px; /* Reduced from 8px */
+}
+
+.checklist-progress {
+  height: 2px; /* Reduced from 3px */
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 1px; /* Reduced from 2px */
+  margin-bottom: 0.4rem; /* Reduced from 0.8rem */
+}
+
+.checklist-progress-bar {
+  height: 100%;
+  background-color: var(--success);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.checklist-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.75rem; /* Reduced from 0.85rem */
+  color: var(--text-primary);
+}
+
+.checklist-items li {
+  padding: 0.2rem 0; /* Reduced from 0.3rem */
+  display: flex;
+  align-items: center;
+}
+
+.checklist-items li.completed {
+  color: #808080;
+  text-decoration: line-through;
+}
+
+/* Card Type Colors */
+.card-type-bug {
+  border-left-color: var(--danger);
+}
+
+.card-type-feature {
+  border-left-color: var(--primary);
+}
+
+.card-type-task {
+  border-left-color: var(--success);
+}
+
+/* Card Priority */
+.card-priority {
+  padding: 0.1rem 0.3rem; /* Reduced from 0.2rem 0.5rem */
+  border-radius: 3px; /* Reduced from 4px */
+  font-size: 0.65rem; /* Reduced from 0.7rem */
+  font-weight: 500;
+}
+
+.card-priority.emergency {
+  background: var(--danger);
+  color: white;
+}
+
+.card-priority.date-sensitive {
+  background: var(--warning);
+  color: white;
+}
+
+/* Expedited Card Styling */
+.card.expedited {
+  border-left: 3px solid var(--danger); /* Reduced from 4px */
+  position: relative;
+}
+
+.card.expedited::before {
+  position: absolute;
+  top: -6px; /* Adjusted from -8px */
+  right: -6px; /* Adjusted from -8px */
+  background-color: var(--danger);
+  color: white;
+  border-radius: 50%;
+  width: 18px; /* Reduced from 24px */
+  height: 18px; /* Reduced from 24px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px; /* Reduced from 12px */
+  border: 1px solid var(--primary-bg); /* Reduced from 2px */
+}
+
+/* Card selection state */
+.card.selected {
+  border: 1px solid var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+/* Make sure the edited card doesn't jump when dragging */
+.card.editing {
+  transform: none;
+}
+
+/* Improve card dragging states */
+.card.dragging {
+  cursor: grabbing;
+}
+
+/* Hide ONLY the original card when dragging */
+.card.original-dragging {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Style the dragged overlay card */
+[data-dnd-kit-drag-overlay] .card {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: rotate(2deg) scale(1.02) !important;
+  cursor: grabbing !important;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important;
+  z-index: 9999 !important;
+  pointer-events: none !important; /* This is key - prevent pointer events on the clone */
+}
+
+/* Expedite lane cards - ensure consistent sizing */
+.expedite-cards .card {
+  width: var(--card-standard-width);
+  max-width: var(--card-standard-width);
+  max-height: var(--card-max-height);
+  margin: 0.5rem 0;
+}
+
+/* Add styles for user avatars */
+.card-assigned-users {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  gap: 4px;
+}
+
+.user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background-color: #3498db;
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+/* You can add different colors for variation */
+.user-avatar:nth-child(3n+1) {
+  background-color: #3498db;
+}
+
+.user-avatar:nth-child(3n+2) {
+  background-color: #e74c3c;
+}
+
+.user-avatar:nth-child(3n+3) {
+  background-color: #2ecc71;
+}
+
+/* Add these styles to Card.css */
+.card-time-tracking {
+  display: flex;
+  align-items: center;
+  font-size: 0.8em;
+  color: #777;
+  margin-top: 5px;
+}
+
+.time-icon {
+  margin-right: 5px;
+}
+
+.card-movement-count {
+  display: flex;
+  align-items: center;
+  font-size: 0.8em;
+  color: #777;
+  margin-top: 5px;
+}
+
+.movement-icon {
+  margin-right: 5px;
+}
+
+/* Add this to fix ghost cards */
+.dragging-active .card[data-is-dragging="true"] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.dragging-ghost {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
