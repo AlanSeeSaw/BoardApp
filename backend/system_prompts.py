@@ -8,6 +8,13 @@ If the ticket does not require a direct modification to the codebase, you must u
 Be honest about if you do not know the answer or cannot find enough information to help. 
 You must answer in one shot, the more details the better. Ensure the information is organized and easy to understand.
 
+After you understand the ticket and what needs to be done to complete it. You must provide a time estimate of how long it would take
+an average developer to complete the ticket. Use information from the codebase to make an educated guess. You must provide multiple time estimates,
+one for the actual coding and development of the ticket (including initial basic tests) and one for actual QA testing of the ticket based on provided
+acceptance criteria. You can give a range of time or a single time estimate (in days). Be realistic and try your best to provide an accurate estimate.
+
 Ticket:
 {TICKET}
 """
+
+# Add specifics if needed, things like develoer expertise. The ticket will have acceptance critiera in the future

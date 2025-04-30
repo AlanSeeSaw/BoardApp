@@ -64,8 +64,6 @@ def run_codex(ticket: str, dir_name: str) -> dict | str | None:
         print(f"Stderr:\n{result.stderr}")
         print(f"Stdout:\n{result.stdout}")
         return None  # Indicate failure
-    
-    # print(f"\n\nFull Stdout:\n\n{result.stdout}\n\n")
 
     # Process the JSON stream output
     last_message = None
@@ -104,14 +102,17 @@ def run_claude(ticket: str, dir_name: str) -> dict | str | None:
         print(f"Stderr:\n{result.stderr}")
         print(f"Stdout:\n{result.stdout}")
         return None  # Indicate failure
-    
-    print(f"\n\nFull Stdout:\n\n{result.stdout}\n\n")
 
     return json.loads(result.stdout)['result']
 
 if __name__ == "__main__":
-    repo_name = "BoardApp"
-    repo_owner = "AlanSeeSaw"
+    # repo_name = "BoardApp"
+    # repo_owner = "AlanSeeSaw"
+    # repo_url = f"https://github.com/{repo_owner}/{repo_name}.git" 
+    # dir_name = f"./{repo_name}" 
+    
+    repo_name = "code_qa"
+    repo_owner = "jayden-hyman"
     repo_url = f"https://github.com/{repo_owner}/{repo_name}.git" 
     dir_name = f"./{repo_name}" 
 
@@ -119,15 +120,15 @@ if __name__ == "__main__":
         print("Failed to download repository. Exiting.")
         sys.exit(1) # Exit if download fails
         
-    # ticket = f"""
-    # Title: Add more language support
-    # Description: Add support for more languages to be able to be parsed by tree-sitter, need to figure out queries for each language.
-    # """
-    
     ticket = f"""
-    Title: Repo summary
-    Description: Write a light summary of the readme in the repo.
+    Title: Add more language support
+    Description: Add support for more languages to be able to be parsed by tree-sitter, need to figure out queries for each language.
     """
+    
+    # ticket = f"""
+    # Title: Repo summary
+    # Description: Write a light summary of the readme in the repo.
+    # """
 
 
     print(f"Running Codex:\n\n")
