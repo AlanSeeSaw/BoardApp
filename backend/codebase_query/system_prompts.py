@@ -13,6 +13,15 @@ an average developer to complete the ticket. Use information from the codebase t
 one for the actual coding and development of the ticket (including initial basic tests) and one for actual QA testing of the ticket based on provided
 acceptance criteria. You can give a range of time or a single time estimate (in days). Be realistic and try your best to provide an accurate estimate.
 
+You must return a JSON object with the following format:
+{
+    "ticket_help": "{ticket help}",
+    "time_estimates": {
+        "coding": "{# of days}",
+        "qa_testing": "{# of days}"
+    }
+}
+
 Ticket:
 {TICKET}
 """

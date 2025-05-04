@@ -4,16 +4,16 @@ import subprocess
 from dotenv import load_dotenv
 import time
 import sys
-import shutil # Added for directory cleanup
+import shutil
 from system_prompts import PROMPT
 from typing import Literal
-load_dotenv()  # populate os.environ with values from .env
+load_dotenv()
 
 def download_repo(repo_url: str, target_dir: str) -> bool:
     """Clones a git repository into the target directory. Returns True on success."""
     if os.path.exists(target_dir):
         print(f"Directory {target_dir} already exists. Removing it.")
-        shutil.rmtree(target_dir) # Remove existing directory to ensure a clean clone
+        shutil.rmtree(target_dir)
 
     print(f"Cloning repository {repo_url} into {target_dir}...")
     cmd = ["git", "clone", repo_url, target_dir]
@@ -25,7 +25,7 @@ def download_repo(repo_url: str, target_dir: str) -> bool:
             stderr=subprocess.PIPE,
             text=True,
             check=True, # Raise exception on non-zero exit code
-            timeout=300 # Add a timeout (e.g., 5 minutes)
+            timeout=300
         )
         print(f"Repository cloned successfully.")
         return True
@@ -71,8 +71,24 @@ def run_codex(ticket: str, dir_name: str) -> dict | str | None:
         data = json.loads(line)
         if data.get("type") == "message" and data.get("status") == "completed":
             last_message = data # Keep track of the latest completed message
+            
+    # print(f"\n\n\nLast message: {last_message}\n\n\n")
+            
+    last_message_content = last_message["content"][0]["text"]
+    
+    # Clean up the content by removing markdown code block fences if present
+    if last_message_content.startswith("```json\n"):
+        # Extract JSON content between the markdown fences
+        content_parts = last_message_content.split("```")
+        if len(content_parts) >= 2:
+            last_message_content = content_parts[1].strip()
+            if last_message_content.startswith("json\n"):
+                last_message_content = last_message_content[5:].strip()
+    
+    last_message = json.loads(last_message_content)
+    print(f"\n\n\nOutput: {last_message}\n\n\n")
 
-    return last_message["content"][0]["text"]
+    return last_message
 
 def run_claude(ticket: str, dir_name: str) -> dict | str | None:
     prompt = PROMPT.replace("{DIR_NAME}", dir_name).replace("{TICKET}", ticket)
@@ -134,16 +150,17 @@ if __name__ == "__main__":
     print(f"Running Codex:\n\n")
     start_time = time.time()
     response = run_codex(ticket, dir_name)
-    print(response)
+    print(f"Ticket help: {response['ticket_help']}")
+    print(f"Time estimates: {response['time_estimates']}")
     end_time = time.time()
     print(f"Time taken: {end_time - start_time} seconds")
     
-    print(f"\n\nRunning Claude:\n\n")
-    start_time = time.time()
-    response = run_claude(ticket, dir_name)
-    print(response)
-    end_time = time.time()
-    print(f"Time taken: {end_time - start_time} seconds")
+    # print(f"\n\nRunning Claude:\n\n")
+    # start_time = time.time()
+    # response = run_claude(ticket, dir_name)
+    # print(response)
+    # end_time = time.time()
+    # print(f"Time taken: {end_time - start_time} seconds")
 
     # 4. Optional: Clean up the cloned repository
     print(f"Cleaning up {dir_name}...")
