@@ -848,58 +848,59 @@ const CardModal: React.FC<CardModalProps> = ({
         </div>
 
         <div className="card-modal-section">
-          <h3>Movement History</h3>
-          {card.movementHistory && card.movementHistory.length > 0 ? (
-            <div className="movement-history">
-              <h4>Movement History</h4>
-              <p>Total moves: {card.movementHistory.length}</p>
-              
-              {/* Add time since last move display */}
-              {(() => {
-                const timeSinceLastMove = calculateTimeSinceLastMove(card);
-                if (timeSinceLastMove !== null) {
-                  return (
-                    <div className="time-since-last-move">
-                      <p><strong>Time since last move:</strong> {formatTimeDuration(timeSinceLastMove)}</p>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-              
-              <details open>
-                <summary>View movement history</summary>
-                <ul className="movement-list">
-                  {card.movementHistory.map((movement, index) => {
-                    const fromColumn = board?.columns.find(col => col.id === movement.fromColumnId);
-                    const toColumn = board?.columns.find(col => col.id === movement.toColumnId);
-                    
-                    // Fix the movement display section to only use properties that exist
-                    let moveDate;
-                    try {
-                      // Just use movedAt directly - no need for fallbacks
-                      moveDate = new Date(movement.movedAt);
-                    } catch (e) {
-                      console.error('Error parsing date:', e);
-                      moveDate = new Date(); // Fallback
+          <details className="movement-history-details">
+            <summary>
+              <h3 className="movement-history-title">Movement History</h3>
+            </summary>
+            <div className="movement-history-content">
+              {card.movementHistory && card.movementHistory.length > 0 ? (
+                <div className="movement-history">
+                  <p>Total moves: {card.movementHistory.length}</p>
+                  
+                  {(() => {
+                    const timeSinceLastMove = calculateTimeSinceLastMove(card);
+                    if (timeSinceLastMove !== null) {
+                      return (
+                        <div className="time-since-last-move">
+                          <p><strong>Time since last move:</strong> {formatTimeDuration(timeSinceLastMove)}</p>
+                        </div>
+                      );
                     }
-                    
-                    return (
-                      <li key={index}>
-                        <strong>Moved:</strong> {fromColumn?.title || 'Unknown'} → {toColumn?.title || 'Unknown'} 
-                        <span className="movement-date">
-                          {moveDate.toLocaleDateString()} {moveDate.toLocaleTimeString()}
-                        </span>
-                        {movement.movedBy && <span className="moved-by">by {movement.movedBy}</span>}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </details>
+                    return null;
+                  })()}
+                  
+                  <ul className="movement-list">
+                    {card.movementHistory.map((movement, index) => {
+                      const fromColumn = board?.columns.find(col => col.id === movement.fromColumnId);
+                      const toColumn = board?.columns.find(col => col.id === movement.toColumnId);
+                      
+                      // Fix the movement display section to only use properties that exist
+                      let moveDate;
+                      try {
+                        // Just use movedAt directly - no need for fallbacks
+                        moveDate = new Date(movement.movedAt);
+                      } catch (e) {
+                        console.error('Error parsing date:', e);
+                        moveDate = new Date(); // Fallback
+                      }
+                      
+                      return (
+                        <li key={index}>
+                          <strong>Moved:</strong> {fromColumn?.title || 'Unknown'} → {toColumn?.title || 'Unknown'} 
+                          <span className="movement-date">
+                            {moveDate.toLocaleDateString()} {moveDate.toLocaleTimeString()}
+                          </span>
+                          {movement.movedBy && <span className="moved-by">by {movement.movedBy}</span>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : (
+                <p>No movement history recorded yet.</p>
+              )}
             </div>
-          ) : (
-            <p>No movement history recorded yet.</p>
-          )}
+          </details>
         </div>
       </div>
     </div>

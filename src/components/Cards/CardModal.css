@@ -522,3 +522,46 @@ body.modal-open {
   font-style: italic;
   color: var(--text-secondary);
 }
+
+/* Movement History */
+.movement-history-details {
+  width: 100%;
+}
+
+.movement-history-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  padding: 10px 0;
+  position: relative;
+}
+
+.movement-history-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.movement-history-details summary::before {
+  content: "▶";
+  font-size: 0.8rem;
+  margin-right: 8px;
+  color: var(--text-secondary);
+  transition: transform 0.2s;
+}
+
+.movement-history-details[open] summary::before {
+  content: "▼";
+}
+
+.movement-history-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: inline;
+}
+
+.movement-history-content {
+  margin-top: 1rem;
+  padding: 0 1rem;
+}
