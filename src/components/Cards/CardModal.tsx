@@ -49,9 +49,18 @@ const CardModal: React.FC<CardModalProps> = ({
   const [assignedUsers, setAssignedUsers] = useState<string[]>([]);
   const [userToAssign, setUserToAssign] = useState<string>('');
 
+  // Add new state variables for the new features
+  const [codebaseContext, setCodebaseContext] = useState('');
+  const [devTimeEstimate, setDevTimeEstimate] = useState('');
+  const [llmTimeEstimate, setLlmTimeEstimate] = useState('');
+  const [isGeneratingContext, setIsGeneratingContext] = useState(false);
+  const [isGeneratingTimeEstimate, setIsGeneratingTimeEstimate] = useState(false);
+
   // Add state for loading state during API call
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contextError, setContextError] = useState<string | null>(null);
+  const [timeEstimateError, setTimeEstimateError] = useState<string | null>(null);
 
   // Add a consistent date formatting function
   const formatDate = (date: Date | string | number | null): string => {
@@ -106,6 +115,10 @@ const CardModal: React.FC<CardModalProps> = ({
       setEditedType(card.type);
       // Ensure assignedUsers is always initialized as an array
       setAssignedUsers(Array.isArray(card.assignedUsers) ? [...card.assignedUsers] : []);
+      // Initialize the new fields
+      setCodebaseContext(card.codebaseContext || '');
+      setDevTimeEstimate(card.devTimeEstimate || '');
+      setLlmTimeEstimate(card.llmTimeEstimate || '');
       // Reset to display mode when a new card is loaded
       setIsEditMode(false);
     }
@@ -330,6 +343,9 @@ const CardModal: React.FC<CardModalProps> = ({
       assignedUsers: assignedUsers,
       currentColumnId: columnId,
       timeInColumns: card.timeInColumns || [],
+      codebaseContext: codebaseContext,
+      devTimeEstimate: devTimeEstimate,
+      llmTimeEstimate: llmTimeEstimate,
       updated: new Date()
     };
     
@@ -560,6 +576,51 @@ const CardModal: React.FC<CardModalProps> = ({
     }
   };
 
+  // Dummy function for generating codebase context
+  const generateCodebaseContext = async () => {
+    try {
+      setIsGeneratingContext(true);
+      setContextError(null);
+      
+      // Dummy implementation - you'll replace this with actual implementation later
+      console.log('Generating codebase context...');
+      
+      // Simulate API call with a timeout
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Dummy result
+      const dummyContext = "This is a placeholder for generated codebase context.";
+      setCodebaseContext(dummyContext);
+    } catch (err) {
+      console.error('Error generating codebase context:', err);
+      setContextError('Failed to generate codebase context. Please try again.');
+    } finally {
+      setIsGeneratingContext(false);
+    }
+  };
+
+  // Dummy function for generating time estimate
+  const generateTimeEstimate = async () => {
+    try {
+      setIsGeneratingTimeEstimate(true);
+      setTimeEstimateError(null);
+      
+      // Dummy implementation - you'll replace this with actual implementation later
+      console.log('Generating time estimate...');
+      
+      // Simulate API call with a timeout
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Set dummy result
+      setLlmTimeEstimate('4');
+    } catch (err) {
+      console.error('Error generating time estimate:', err);
+      setTimeEstimateError('Failed to generate time estimate. Please try again.');
+    } finally {
+      setIsGeneratingTimeEstimate(false);
+    }
+  };
+
   // In the movement history section, add debugging and fix rendering
   useEffect(() => {
     // Debug to see if movement history is available
@@ -637,6 +698,28 @@ const CardModal: React.FC<CardModalProps> = ({
                       {isGenerating ? 'Generating...' : 'Generate Acceptance Criteria'}
                     </button>
                     {error && <div className="error-message">{error}</div>}
+                  </div>
+                </div>
+              )}
+              
+              {renderEditField("Codebase Context",
+                <div>
+                  <textarea
+                    value={codebaseContext}
+                    onChange={(e) => setCodebaseContext(e.target.value)}
+                    className="card-textarea"
+                    rows={4}
+                    readOnly
+                  />
+                  <div className="form-actions">
+                    <button 
+                      onClick={generateCodebaseContext} 
+                      className="btn btn-secondary"
+                      disabled={isGeneratingContext}
+                    >
+                      {isGeneratingContext ? 'Generating...' : 'Generate Codebase Context Ticket Help'}
+                    </button>
+                    {contextError && <div className="error-message">{contextError}</div>}
                   </div>
                 </div>
               )}
@@ -762,6 +845,44 @@ const CardModal: React.FC<CardModalProps> = ({
                   </div>
                 </div>
               )}
+              
+              {renderEditField("Dev Time Estimate",
+                <div className="time-estimate-container">
+                  <input
+                    type="number"
+                    value={devTimeEstimate}
+                    onChange={(e) => setDevTimeEstimate(e.target.value)}
+                    className="time-estimate-input"
+                    min="0"
+                  />
+                  <span className="time-unit">days</span>
+                </div>
+              )}
+              
+              {renderEditField("LLM Time Estimate",
+                <div>
+                  <div className="time-estimate-container">
+                    <input
+                      type="number"
+                      value={llmTimeEstimate}
+                      className="time-estimate-input"
+                      min="0"
+                      disabled
+                    />
+                    <span className="time-unit">days</span>
+                  </div>
+                  <div className="form-actions">
+                    <button 
+                      onClick={generateTimeEstimate} 
+                      className="btn btn-secondary"
+                      disabled={isGeneratingTimeEstimate}
+                    >
+                      {isGeneratingTimeEstimate ? 'Generating...' : 'Generate Estimated Completion Time'}
+                    </button>
+                    {timeEstimateError && <div className="error-message">{timeEstimateError}</div>}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             // Display Mode
@@ -770,6 +891,12 @@ const CardModal: React.FC<CardModalProps> = ({
               
               {card.description && renderField("Description",
                 <div className="card-description">{card.description}</div>
+              )}
+              
+              {renderField("Codebase Context",
+                <div className="card-description">
+                  {card.codebaseContext || <span className="empty-field">No codebase context available</span>}
+                </div>
               )}
               
               <div className="card-meta">
@@ -783,6 +910,20 @@ const CardModal: React.FC<CardModalProps> = ({
                 <div className="card-meta-row">
                   {renderField("Priority", renderBadge('priority', card.priority))}
                   {renderField("Type", renderBadge('type', card.type))}
+                </div>
+                
+                {/* Time estimates side by side */}
+                <div className="card-meta-row">
+                  {renderField("Dev Time Estimate", 
+                    <div className="status-badge">
+                      {card.devTimeEstimate ? `${card.devTimeEstimate} days` : 'Not estimated'}
+                    </div>
+                  )}
+                  {renderField("LLM Time Estimate", 
+                    <div className="status-badge">
+                      {card.llmTimeEstimate ? `${card.llmTimeEstimate} days` : 'Not estimated'}
+                    </div>
+                  )}
                 </div>
               </div>
 

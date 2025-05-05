@@ -76,6 +76,11 @@ export interface CardType {
   currentColumnId: string;
   movementHistory?: CardMovement[];
   timeInColumns?: CardTimeInColumn[];
+  
+  // 🆕 Additional fields for development tracking
+  codebaseContext?: string;
+  devTimeEstimate?: string;
+  llmTimeEstimate?: string;
 }
 
 export interface ColumnType {
