@@ -428,11 +428,15 @@ export const useSaveBoard = (
             // Sanitize the movement history for this card
             const sanitizedMovementHistory = sanitizeForFirebase(card.movementHistory);
             
-            // Create a specific update path for this card's movement history
-            updates[`cards.${cardId}.movementHistory`] = sanitizedMovementHistory;
-            
-            // Force the Firebase update to recognize this is a priority field
-            updates[`cards.${cardId}.hasMovementHistory`] = true;
+            // FIX: Create a properly nested update object structure instead of using dot notation
+            if (!updates.cards) {
+              updates.cards = {};
+            }
+            if (!updates.cards[cardId]) {
+              updates.cards[cardId] = {};
+            }
+            updates.cards[cardId].movementHistory = sanitizedMovementHistory;
+            updates.cards[cardId].hasMovementHistory = true;
           });
         }
         
