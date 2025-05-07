@@ -25,11 +25,11 @@ export interface CardProps {
   updateTimeInColumn?: (cardId: string, columnId: string, exitTime?: Date) => void;
 }
 
-const Card: React.FC<CardProps> = ({ 
-  card, 
-  index, 
-  columnId, 
-  board, 
+const Card: React.FC<CardProps> = ({
+  card,
+  index,
+  columnId,
+  board,
   setBoard,
   isSelected,
   toggleSelection,
@@ -55,7 +55,7 @@ const Card: React.FC<CardProps> = ({
         // Log the movement
         updateCardMovement(card.id, card.currentColumnId, columnId);
       }
-      
+
       // Update the card's current column in the board state
       if (setBoard) {
         setBoard(prevBoard => ({
@@ -90,36 +90,36 @@ const Card: React.FC<CardProps> = ({
   };
 
   // Simplified utility functions
-  const isPastDue = card.dueDate 
+  const isPastDue = card.dueDate
     ? new Date(card.dueDate).getTime() < (new Date().getTime() - 60000) // 1 minute buffer
     : false;
-  const checklistProgress = card.checklist?.length 
-    ? (card.checklist.filter(item => item.completed).length / card.checklist.length) * 100 
+  const checklistProgress = card.checklist?.length
+    ? (card.checklist.filter(item => item.completed).length / card.checklist.length) * 100
     : 0;
 
   // Fix the date formatting to account for timezone offset
   const formatDate = (date: Date | string | number | null | undefined): string => {
     if (!date) return '';
-    
+
     // Create a new Date object to ensure consistent handling
     const dateObj = new Date(date);
-    
+
     // Extract the date part from ISO string (YYYY-MM-DD)
     // This is what the date input would show and what we want to display
     const datePart = dateObj.toISOString().split('T')[0];
     const [year, month, day] = datePart.split('-').map(num => parseInt(num, 10));
-    
+
     // Format using the extracted date parts
     const options: Intl.DateTimeFormatOptions = {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     };
-    
+
     // Create a date object using the extracted parts
     // Month is 0-indexed in JavaScript Date
     const displayDate = new Date(year, month - 1, day);
-    
+
     return displayDate.toLocaleDateString(undefined, options);
   };
 
@@ -129,12 +129,12 @@ const Card: React.FC<CardProps> = ({
     if (userId && userId.includes('@') && userId.includes('.')) {
       return getInitialsFromName(userId);
     }
-    
+
     if (!board) {
       // Fallback when board is not available (like during drag operations)
       return userId && userId.length > 0 ? userId.substring(0, 2).toUpperCase() : "?";
     }
-    
+
     // Check if it's the owner/current user
     const auth = getAuth();
     const currentUser = auth.currentUser;
@@ -142,12 +142,12 @@ const Card: React.FC<CardProps> = ({
       const displayName = currentUser.displayName || currentUser.email || '';
       return getInitialsFromName(displayName);
     }
-    
+
     // Check if it's in shared emails
     if (board.shared && board.shared.includes(userId)) {
       return getInitialsFromName(userId);
     }
-    
+
     // Check if we have a users collection in the board
     if (board.users && Array.isArray(board.users)) {
       const foundUser = board.users.find(u => u.id === userId || u.email === userId || u.uid === userId);
@@ -156,7 +156,7 @@ const Card: React.FC<CardProps> = ({
         return getInitialsFromName(userName);
       }
     }
-    
+
     // Last resort fallback - use first two characters of userId if available
     return userId && userId.length > 0 ? userId.substring(0, 2).toUpperCase() : "?";
   };
@@ -164,19 +164,19 @@ const Card: React.FC<CardProps> = ({
   // Helper function to get initials from name
   const getInitialsFromName = (name: string): string => {
     if (!name) return "?";
-    
+
     // For email addresses, use first two characters of the username part
     if (name.includes('@')) {
       const username = name.split('@')[0];
       return username.substring(0, 2).toUpperCase();
     }
-    
+
     // For regular names, use first letter of first and last name
     const nameParts = name.split(' ');
     if (nameParts.length > 1) {
       return `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase();
     }
-    
+
     // Otherwise use first two letters
     return name.substring(0, 2).toUpperCase();
   };
@@ -184,24 +184,24 @@ const Card: React.FC<CardProps> = ({
   // Get user name for tooltip
   const getUserName = (userId: string): string => {
     if (!board) return "Unknown User";
-    
+
     // Check if it's the owner
     const auth = getAuth();
     const currentUser = auth.currentUser;
     if (currentUser && (userId === currentUser.uid || userId === currentUser.email)) {
       return currentUser.displayName || currentUser.email || "Current User";
     }
-    
+
     // Check if it's in shared emails
     if (board.shared && board.shared.includes(userId)) {
       return userId; // Return the email
     }
-    
+
     // NEW: Check if it's a direct email format - if so, just display it
     if (userId.includes('@') && userId.includes('.')) {
       return userId;
     }
-    
+
     // NEW: Check if we have a users collection in the board
     if (board.users && Array.isArray(board.users)) {
       const foundUser = board.users.find(u => u.id === userId || u.email === userId || u.uid === userId);
@@ -209,35 +209,35 @@ const Card: React.FC<CardProps> = ({
         return foundUser.name || foundUser.displayName || foundUser.email || userId;
       }
     }
-    
+
     return "Unknown User";
   };
 
   // Simplified handlers for normalized data structure
   const handleCardClick = (e: React.MouseEvent) => {
     console.log("Card clicked:", card.id);
-    
+
     if (isDragging || isBeingDragged) {
       console.log("Card is being dragged, ignoring click");
       return;
     }
-    
+
     const isInteractive = (e.target as HTMLElement).closest('button, a, input, .card-action-buttons');
     if (isInteractive) {
       console.log("Clicked on interactive element, ignoring");
       return;
     }
-    
+
     if (!board) {
       console.log("No board provided to card component");
       return;
     }
-    
+
     if (!columnId) {
       console.log("No columnId provided to card component");
       return;
     }
-    
+
     console.log("Opening card modal for", card.id, "in column", columnId);
     e.stopPropagation();
     openCardModal(card, columnId, board);
@@ -260,11 +260,11 @@ const Card: React.FC<CardProps> = ({
     // Function to handle direct card updates (more immediate than board updates)
     const handleDirectCardUpdate = (event: CustomEvent) => {
       const details = event.detail;
-      
+
       // If this is our card that was updated
       if (details && details.cardId === card.id) {
         console.log(`Card ${card.id} received direct update event`);
-        
+
         // If we have an updated card object in the event
         if (details.updatedCard) {
           // We can directly update our component state if necessary
@@ -287,11 +287,11 @@ const Card: React.FC<CardProps> = ({
         }
       }
     };
-    
+
     // Regular board update handler 
     const handleBoardUpdate = (event: CustomEvent) => {
       const details = event.detail;
-      
+
       // If this is our card that was updated
       if (details && details.cardId === card.id && board && setBoard) {
         console.log(`Card ${card.id} received board update event`);
@@ -302,27 +302,27 @@ const Card: React.FC<CardProps> = ({
         }));
       }
     };
-    
+
     // Force rerender handler
     const handleForceRerender = () => {
       if (board && setBoard) {
         // Check if our card needs updating from the board
         const boardCard = board.cards[card.id];
-        if (boardCard && 
-           (boardCard.title !== card.title || 
+        if (boardCard &&
+          (boardCard.title !== card.title ||
             boardCard.description !== card.description ||
             boardCard.priority !== card.priority)) {
           console.log(`Card ${card.id} forcing rerender from latest board data`);
-          setBoard(prev => ({...prev, _forceUpdate: Date.now()}));
+          setBoard(prev => ({ ...prev, _forceUpdate: Date.now() }));
         }
       }
     };
-    
+
     // Listen for all our custom events
     window.addEventListener('card-directly-updated', handleDirectCardUpdate as EventListener);
     window.addEventListener('board-updated', handleBoardUpdate as EventListener);
     window.addEventListener('force-board-rerender', handleForceRerender);
-    
+
     return () => {
       window.removeEventListener('card-directly-updated', handleDirectCardUpdate as EventListener);
       window.removeEventListener('board-updated', handleBoardUpdate as EventListener);
@@ -339,7 +339,7 @@ const Card: React.FC<CardProps> = ({
         setForceUpdateKey(Date.now());
       }
     };
-    
+
     window.addEventListener('force-card-update', handleGlobalCardUpdate as EventListener);
     return () => {
       window.removeEventListener('force-card-update', handleGlobalCardUpdate as EventListener);
@@ -352,10 +352,10 @@ const Card: React.FC<CardProps> = ({
       const { cardId, updatedCard } = event.detail;
       if (cardId === card.id) {
         console.log(`Card ${card.id} received update event with new data:`, updatedCard);
-        
+
         // Force a re-render with the updated card data
         setForceRender(Date.now());
-        
+
         // Also update the board state if available
         if (board && setBoard) {
           setBoard(prevBoard => ({
@@ -372,7 +372,7 @@ const Card: React.FC<CardProps> = ({
     };
 
     window.addEventListener('card-updated', handleCardUpdate as EventListener);
-    
+
     return () => {
       window.removeEventListener('card-updated', handleCardUpdate as EventListener);
     };
@@ -382,16 +382,16 @@ const Card: React.FC<CardProps> = ({
   useEffect(() => {
     if (board && card.id) {
       const latestCardData = board.cards[card.id];
-      
+
       // If the board has newer data for this card, force a re-render
-      if (latestCardData && 
-          (latestCardData.title !== card.title || 
-           latestCardData.description !== card.description ||
-           latestCardData.priority !== card.priority ||
-           latestCardData.type !== card.type)) {
-        
+      if (latestCardData &&
+        (latestCardData.title !== card.title ||
+          latestCardData.description !== card.description ||
+          latestCardData.priority !== card.priority ||
+          latestCardData.type !== card.type)) {
+
         console.log(`Card ${card.id} detected newer data in board, updating local state`);
-        
+
         // Force a re-render with the latest data
         setForceRender(Date.now());
       }
@@ -423,22 +423,22 @@ const Card: React.FC<CardProps> = ({
     const handleCardUpdated = (event: CustomEvent) => {
       if (event.detail.cardId === card.id) {
         console.log(`Card ${card.id} received card-updated event with new data:`, event.detail.updatedCard);
-        
+
         // Force a re-render with the latest data
         setForceUpdateKey(Date.now());
         forceUpdate();
       }
     };
-    
+
     window.addEventListener('card-updated', handleCardUpdated as EventListener);
-    
+
     return () => {
       window.removeEventListener('card-updated', handleCardUpdated as EventListener);
     };
   }, [card.id]);
 
   return (
-    <div 
+    <div
       key={`card-${card.id}-${typeof card.updated === 'object' ? card.updated.getTime() : Date.now()}`}
       ref={setNodeRef}
       style={style}
@@ -451,7 +451,7 @@ const Card: React.FC<CardProps> = ({
       <div className="card-type-badge">
         {card.type === 'bug' ? '🐞' : card.type === 'feature' ? '✨' : '📋'}
         <span className="card-type-text">{card.type}</span>
-        
+
         {card.priority === 'emergency' && (
           <span className="card-priority emergency">EMERGENCY</span>
         )}
@@ -459,22 +459,22 @@ const Card: React.FC<CardProps> = ({
           <span className="card-priority date-sensitive">DATE SENSITIVE</span>
         )}
       </div>
-      
+
       <div className="card-content">
         <div className="card-header">
           <h3>{card.title}</h3>
         </div>
-        
+
         {/* <div className="card-description">
           <ReactMarkdown>{card.description}</ReactMarkdown>
         </div> */}
-        
+
         {card.dueDate && (
           <div className={`card-due-date ${isPastDue ? 'overdue' : ''}`}>
             Due: {formatDate(card.dueDate)}
           </div>
         )}
-        
+
         {/* Display time tracking if available */}
         {card.timeInColumns && card.timeInColumns.length > 0 && (
           <div className="card-time-tracking" title="Total time on board">
@@ -482,11 +482,11 @@ const Card: React.FC<CardProps> = ({
             {formatTimeDuration(calculateTimeSinceLastMove(card))}
           </div>
         )}
-        
+
         {card.checklist && card.checklist.length > 0 && (
           <div className="card-checklist">
             <div className="checklist-progress">
-              <div 
+              <div
                 className="checklist-progress-bar"
                 style={{ width: `${checklistProgress}%` }}
               ></div>
@@ -500,9 +500,9 @@ const Card: React.FC<CardProps> = ({
         {card.labels && card.labels.length > 0 && (
           <div className="card-labels">
             {card.labels.map(label => (
-              <span 
-                key={label.id} 
-                className="card-label" 
+              <span
+                key={label.id}
+                className="card-label"
                 style={{ backgroundColor: label.color }}
                 title={label.name}
               >
@@ -511,21 +511,21 @@ const Card: React.FC<CardProps> = ({
             ))}
           </div>
         )}
-        
+
         {/* Display movement count if available */}
         {/* {card.movementHistory && card.movementHistory.length > 0 && (
           <div className="card-movement-count" title="Number of column moves">
             <span className="movement-icon">🔄</span> {card.movementHistory.length}
           </div>
         )} */}
-        
+
         {/* Display assigned users */}
         {Array.isArray(card.assignedUsers) && card.assignedUsers.length > 0 && (
           <div className="card-assigned-users">
             {card.assignedUsers.map(userId => (
-              <div 
-                key={userId} 
-                className="user-avatar" 
+              <div
+                key={userId}
+                className="user-avatar"
                 title={getUserName(userId)}
               >
                 {getUserInitials(userId)}

@@ -43,7 +43,7 @@ const NewCard: React.FC<NewCardProps> = ({
           className="card-input card-title"
         />
       </div>
-      
+
       {/* Description second */}
       <div className="form-group">
         <textarea
@@ -54,13 +54,13 @@ const NewCard: React.FC<NewCardProps> = ({
           rows={4}
         />
       </div>
-      
+
       {/* Type and Priority dropdowns */}
       <div className="form-row">
         <div className="form-group half">
           <label>Type</label>
-          <select 
-            value={newCardType} 
+          <select
+            value={newCardType}
             onChange={(e) => setNewCardType(e.target.value as IssueType)}
             className="card-select"
           >
@@ -72,8 +72,8 @@ const NewCard: React.FC<NewCardProps> = ({
 
         <div className="form-group half">
           <label>Priority</label>
-          <select 
-            value={newCardPriority} 
+          <select
+            value={newCardPriority}
             onChange={(e) => setNewCardPriority(e.target.value as Priority)}
             className="card-select"
           >
@@ -85,7 +85,7 @@ const NewCard: React.FC<NewCardProps> = ({
           </select>
         </div>
       </div>
-      
+
       {/* Buttons */}
       <div className="card-form-actions">
         <button onClick={handleSaveCard} className="save-button">

@@ -24,7 +24,7 @@ class LLMService {
   constructor(apiKey: string) {
     // Fix to use the provided apiKey parameter first, then fall back to env variable
     this.apiKey = apiKey || process.env.REACT_APP_OPENAI_API_KEY || '';
-    
+
     // Add a warning if no API key is available
     if (!this.apiKey) {
       console.warn('No API key provided for LLMService');
@@ -75,12 +75,12 @@ class LLMService {
       role: 'system',
       content: 'You are a helpful assistant that writes detailed, practical, and testable acceptance criteria for user stories on a Kanban board. Always format your output as a bulleted list using hyphens. Each bullet should define a clear condition of satisfaction that aligns with agile best practices.'
     };
-  
+
     const userMessage: ChatMessage = {
       role: 'user',
       content: `Here is a card from my Kanban board. Based on its context, write 3-5 high-quality acceptance criteria that define when the work on this card can be considered complete. Use simple and unambiguous language:\n\n${context}`
     };
-  
+
     return this.sendMessage([systemMessage, userMessage]);
   }
 
@@ -89,7 +89,7 @@ class LLMService {
       role: 'system',
       content: 'You are a helpful assistant that provides concise task suggestions for Kanban boards. Keep suggestions practical, clear, and relevant to the project context.'
     };
-    
+
     const userMessage: ChatMessage = {
       role: 'user',
       content: `Based on my current Kanban board context, suggest 3-5 new tasks I might want to add:\n\n${context}`
@@ -108,12 +108,11 @@ class LLMService {
       role: 'system',
       content: 'You are a project management assistant that analyzes Kanban boards to provide insights on project progress, bottlenecks, and suggestions for improvement.'
     };
-    
+
     const userMessage: ChatMessage = {
       role: 'user',
-      content: `Analyze this Kanban board data and provide a brief summary of progress, any potential bottlenecks, and 1-2 suggestions:\n\n${
-        typeof boardData === 'string' ? boardData : JSON.stringify(boardData)
-      }`
+      content: `Analyze this Kanban board data and provide a brief summary of progress, any potential bottlenecks, and 1-2 suggestions:\n\n${typeof boardData === 'string' ? boardData : JSON.stringify(boardData)
+        }`
     };
 
     return this.sendMessage([systemMessage, userMessage]);

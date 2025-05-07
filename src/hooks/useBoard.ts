@@ -9,7 +9,7 @@ import { initializeCardTracking, fixInvalidTimeTracking } from '../utils/CardMov
 // Type-safe function to process timestamps from Firebase
 const processTimestamps = (data: any): BoardType => {
   if (!data) return initialBoard;
-  
+
   // Create a normalized board structure with proper types
   const normalizedBoard: BoardType = {
     ...data,
@@ -24,13 +24,13 @@ const processTimestamps = (data: any): BoardType => {
     users: data.users || [],
     shared: data.shared || []
   };
-  
+
   // Process cards with proper typing
   if (data.cards && typeof data.cards === 'object') {
     Object.entries(data.cards).forEach(([cardId, cardData]) => {
       if (cardData) {
         const card = cardData as any;
-        
+
         // Improved due date handling
         let processedDueDate = undefined;
         if (card.dueDate) {
@@ -45,7 +45,7 @@ const processTimestamps = (data: any): BoardType => {
             console.error(`Error processing due date for card ${cardId}:`, e);
           }
         }
-        
+
         // Improved movement history handling
         let processedMovementHistory = [];
         if (Array.isArray(card.movementHistory) && card.movementHistory.length > 0) {
@@ -55,7 +55,7 @@ const processTimestamps = (data: any): BoardType => {
               console.warn('Invalid movement record found:', movement);
               return null;
             }
-            
+
             // Normalize dates in the movement record
             return {
               cardId: movement.cardId || cardId,
@@ -66,7 +66,7 @@ const processTimestamps = (data: any): BoardType => {
             };
           }).filter(Boolean); // Remove any null entries
         }
-        
+
         normalizedBoard.cards[cardId] = {
           id: cardId,
           title: card.title || '',
@@ -90,7 +90,7 @@ const processTimestamps = (data: any): BoardType => {
       }
     });
   }
-  
+
   // Process columns with proper typing
   if (Array.isArray(data.columns)) {
     normalizedBoard.columns = data.columns.map((col: any): ColumnType => ({
@@ -102,7 +102,7 @@ const processTimestamps = (data: any): BoardType => {
       category: col.category
     }));
   }
-  
+
   // Process activities with proper typing
   if (Array.isArray(data.activities)) {
     normalizedBoard.activities = data.activities.map((activity: any): Activity => ({
@@ -112,20 +112,20 @@ const processTimestamps = (data: any): BoardType => {
       timestamp: convertTimestamp(activity.timestamp)
     }));
   }
-  
+
   // Initialize tracking and fix any invalid data
   const boardWithCardTracking = initializeCardTracking(normalizedBoard);
-  
+
   // Fix invalid timeInColumns entries
   const boardWithFixedTimeTracking = fixInvalidTimeTracking(boardWithCardTracking);
-  
+
   return boardWithFixedTimeTracking;
 };
 
 // Helper function to safely convert Firebase timestamps or date strings to Date objects
 function convertTimestamp(value: any): Date {
   if (!value) return new Date();
-  
+
   try {
     if (value instanceof Timestamp) {
       return value.toDate();
@@ -150,7 +150,7 @@ function convertTimestamp(value: any): Date {
   } catch (e) {
     console.error("Error converting timestamp:", e);
   }
-  
+
   return new Date();
 }
 
@@ -158,14 +158,14 @@ function convertTimestamp(value: any): Date {
 const prepareForFirebase = (board: BoardType): Record<string, any> => {
   // Create a deep copy to avoid modifying the original
   const prepared = JSON.parse(JSON.stringify(board));
-  
+
   // Remove any undefined values
   Object.keys(prepared).forEach(key => {
     if (prepared[key] === undefined) {
       delete prepared[key];
     }
   });
-  
+
   // Ensure all card properties are explicitly included
   if (prepared.cards) {
     Object.keys(prepared.cards).forEach(cardId => {
@@ -173,17 +173,17 @@ const prepareForFirebase = (board: BoardType): Record<string, any> => {
       if (card) {
         // Ensure priority is explicitly included
         prepared.cards[cardId].priority = card.priority || 'normal';
-        
+
         // Ensure expedite status is explicit
         prepared.cards[cardId].expedite = !!card.expedite;
-        
+
         // Normalize dueDate to consistent format if it exists
         if (card.dueDate) {
           try {
             // Convert to Date object first to ensure consistency
-            const dateObj = card.dueDate instanceof Date ? 
+            const dateObj = card.dueDate instanceof Date ?
               card.dueDate : new Date(card.dueDate);
-              
+
             // Only store if it's a valid date
             if (!isNaN(dateObj.getTime())) {
               // Store as ISO string for consistent comparison
@@ -203,7 +203,7 @@ const prepareForFirebase = (board: BoardType): Record<string, any> => {
       }
     });
   }
-  
+
   return prepared;
 };
 
@@ -217,38 +217,38 @@ async function getBoardDocRef(
     // For shared boards
     const cacheKey = `original-board-path-${boardId}`;
     const cachedPath = localStorage.getItem(cacheKey);
-    
+
     if (cachedPath) {
       return doc(db, cachedPath);
     }
-    
+
     // Get the original path from shared metadata
     if (!user.email) {
       throw new Error("User email required for shared board");
     }
-    
+
     const normalizedEmail = user.email.toLowerCase();
     const sharedMetaRef = doc(db, "sharedBoards", normalizedEmail, "boards", boardId);
     const sharedMetaSnap = await getDoc(sharedMetaRef);
-    
+
     if (!sharedMetaSnap.exists()) {
       throw new Error("Shared board not found");
     }
-    
+
     const originalPath = sharedMetaSnap.data().originalBoardPath;
     if (!originalPath) {
       throw new Error("Original path not found");
     }
-    
+
     localStorage.setItem(cacheKey, originalPath);
     return doc(db, originalPath);
-  } 
-  
+  }
+
   // Normal board
   if (!user.uid) {
     throw new Error("User ID required");
   }
-  
+
   return doc(db, `users/${user.uid}/boards/${boardId}`);
 }
 
@@ -261,21 +261,21 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
         if (parsedBoard && Array.isArray(parsedBoard.columns)) {
           return parsedBoard as BoardType;
         }
-      } 
+      }
     }
     catch (e) {
       console.error("Error loading from localStorage:", e);
     }
     return initialBoard;
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Use refs to track latest values
   const lastMoveTimestampRef = useRef<number>(0);
   const ignoreFirebaseUpdatesRef = useRef<boolean>(false);
-  
+
   // Save to localStorage whenever board changes
   useEffect(() => {
     try {
@@ -284,53 +284,53 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
       console.error("Error saving to localStorage:", e);
     }
   }, [board]);
-  
+
   // Save board to Firebase
   const saveToFirebase = useCallback(async (forceSave: boolean = false) => {
     if (!user || !boardId) return;
-    
+
     try {
       const boardDocRef = await getBoardDocRef(user, boardId, isShared === true);
-      
+
       // Prepare data for Firebase
       const boardData = prepareForFirebase(board);
       boardData.updatedAt = serverTimestamp();
       boardData.lastEditedByEmail = user.email;
       boardData.lastEditedById = user.uid;
-      
+
       // If force save, use setDoc, otherwise use updateDoc
       if (forceSave) {
         await setDoc(boardDocRef, boardData, { merge: true });
       } else {
         await updateDoc(boardDocRef, boardData);
       }
-      
+
       console.log("Board saved to Firebase");
     } catch (error) {
       console.error("Error saving board to Firebase:", error);
       setError((error as Error).message);
     }
   }, [board, boardId, user, isShared]);
-  
+
   // Load board from Firestore
   useEffect(() => {
     if (!boardId || !user) {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     const loadBoard = async () => {
       try {
         const boardDocRef = await getBoardDocRef(user, boardId, isShared === true);
-        
+
         // Set up snapshot listener
         return onSnapshot(boardDocRef, (docSnap) => {
           if (docSnap.exists() && !ignoreFirebaseUpdatesRef.current) {
             const boardData = docSnap.data();
-            
+
             // For shared boards, ensure we get the complete data
             if (isShared) {
               console.log("Loading shared board data:", {
@@ -338,17 +338,17 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
                 columnCount: boardData.columns ? boardData.columns.length : 0
               });
             }
-            
+
             const processedBoard = processTimestamps(boardData);
-            
+
             // NEW: Ensure current user is in the users collection
             if (!processedBoard.users) {
               processedBoard.users = [];
             }
-            
+
             // Add current user if not already in the list
-            if (user.email && !processedBoard.users.some(u => 
-                u.id === user.uid || u.email === user.email)) {
+            if (user.email && !processedBoard.users.some(u =>
+              u.id === user.uid || u.email === user.email)) {
               processedBoard.users.push({
                 uid: user.uid,
                 email: user.email,
@@ -357,14 +357,14 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
                 name: user.displayName || user.email || ''
               });
             }
-            
+
             // Don't override local state if we just made a move
             const now = Date.now();
             if (now - lastMoveTimestampRef.current < 3000) {
               console.log("Ignoring Firebase update because we just moved a card locally");
               return;
             }
-            
+
             // Update board state with complete data
             setBoard(processedBoard);
           } else if (!docSnap.exists()) {
@@ -377,13 +377,13 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
               ownerName: user.displayName || user.email,
               users: []
             };
-            
+
             const boardToSave = {
               ...prepareForFirebase(newBoard),
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp()
             };
-            
+
             setDoc(boardDocRef, boardToSave)
               .then(() => setBoard(newBoard))
               .catch(error => {
@@ -391,28 +391,28 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
                 setError((error as Error).message);
               });
           }
-          
+
           setLoading(false);
         });
       } catch (error) {
         console.error("Error loading board:", error);
         setError((error as Error).message);
         setLoading(false);
-        return () => {};
+        return () => { };
       }
     };
-    
+
     const unsubscribePromise = loadBoard();
     return () => {
       unsubscribePromise.then(unsub => unsub && unsub());
     };
   }, [boardId, user, isShared]);
-  
+
   // Helper to get a card by ID with type safety
   const getCardById = useCallback((cardId: string): CardType | undefined => {
     return board.cards[cardId];
   }, [board.cards]);
-  
+
   // Add a new card to a column
   const addCard = useCallback((columnId: string, card: CardType) => {
     setBoard(prev => {
@@ -421,7 +421,7 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
         ...prev.cards,
         [card.id]: card
       };
-      
+
       // Add card ID to the appropriate column
       const updatedColumns = prev.columns.map(col => {
         if (col.id === columnId) {
@@ -432,30 +432,30 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
         }
         return col;
       });
-      
+
       return {
         ...prev,
         cards: updatedCards,
         columns: updatedColumns
       };
     });
-    
+
     // Save to Firebase
     setTimeout(() => saveToFirebase(), 100);
   }, [saveToFirebase]);
-  
+
   // Update a card with type safety - simplified
   const updateCard = useCallback((cardId: string, updates: Partial<CardType>) => {
     setBoard(prev => {
       if (!prev.cards[cardId]) return prev;
-      
+
       // Create a copy of the card
       const updatedCard = {
         ...prev.cards[cardId],
         ...updates,
         updated: new Date()
       };
-      
+
       // Normalize dueDate if it exists and changed
       if (updates.dueDate !== undefined) {
         try {
@@ -464,9 +464,9 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
             updatedCard.dueDate = null;
           } else {
             // Convert to Date object for consistency
-            const dateObj = updates.dueDate instanceof Date ? 
+            const dateObj = updates.dueDate instanceof Date ?
               updates.dueDate : new Date(updates.dueDate);
-            
+
             // Only store if it's a valid date
             if (!isNaN(dateObj.getTime())) {
               updatedCard.dueDate = dateObj;
@@ -479,7 +479,7 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
           updatedCard.dueDate = null;
         }
       }
-      
+
       // Create a new board with the updated card
       const newBoard = {
         ...prev,
@@ -490,32 +490,32 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
         // Add a timestamp to force re-renders
         clientTimestamp: Date.now()
       };
-      
+
       // If priority changed, update the lastMoveTimestamp to trigger immediate save
       if (updates.priority !== undefined) {
         newBoard.lastMoveTimestamp = Date.now();
       }
-      
+
       // Dispatch an event to notify components of the update
       if (typeof window !== 'undefined') {
         const updateEvent = new CustomEvent('card-directly-updated', {
-          detail: { 
+          detail: {
             cardId: cardId,
             updatedCard: updatedCard
           }
         });
         window.dispatchEvent(updateEvent);
-        
+
         // Also dispatch a force update event
         const forceEvent = new CustomEvent('force-card-update', {
           detail: { cardId: cardId }
         });
         window.dispatchEvent(forceEvent);
       }
-      
+
       return newBoard;
     });
-    
+
     // For priority changes, save immediately with no debounce
     if (updates.priority !== undefined) {
       saveToFirebase(true);
@@ -524,22 +524,23 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
       setTimeout(() => saveToFirebase(), 100);
     }
   }, [saveToFirebase]);
-  
+
+  // NOT IMPLEMENTED
   // Delete a card with type safety
   const deleteCard = useCallback((cardId: string) => {
     setBoard(prev => {
       // Skip if card doesn't exist
       if (!prev.cards[cardId]) return prev;
-      
+
       // Create a copy of cards without the deleted one
       const { [cardId]: deletedCard, ...remainingCards } = prev.cards;
-      
+
       // Remove card ID from all columns
       const updatedColumns = prev.columns.map(col => ({
         ...col,
         cardIds: col.cardIds.filter(id => id !== cardId)
       }));
-      
+
       return {
         ...prev,
         cards: remainingCards,
@@ -547,11 +548,11 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
         archivedCardIds: prev.archivedCardIds.filter(id => id !== cardId)
       };
     });
-    
+
     // Save to Firebase
     setTimeout(() => saveToFirebase(), 100);
   }, [saveToFirebase]);
-  
+
   // Add a new column with type safety
   const addColumn = useCallback((title: string) => {
     setBoard(prev => {
@@ -562,64 +563,64 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
         wipLimit: 0,
         isCollapsed: false
       };
-      
+
       return {
         ...prev,
         columns: [...prev.columns, newColumn]
       };
     });
-    
+
     // Save to Firebase
     setTimeout(() => saveToFirebase(), 100);
   }, [saveToFirebase]);
-  
+
   // Move a card between columns - simplified
   const moveCard = useCallback((
-    cardId: string, 
-    sourceColumnId: string, 
+    cardId: string,
+    sourceColumnId: string,
     destinationColumnId: string
   ) => {
     if (!destinationColumnId) return;
-    
+
     // Check if this is an expedite operation
     const isToExpedite = destinationColumnId === 'expedite';
-    
+
     // Update the last move timestamp
     lastMoveTimestampRef.current = Date.now();
-    
+
     // Temporarily ignore Firebase updates
     ignoreFirebaseUpdatesRef.current = true;
-    
+
     // Clear the ignore flag after a delay
     setTimeout(() => {
       ignoreFirebaseUpdatesRef.current = false;
     }, 3000);
-    
+
     setBoard(prev => {
       // Create a deep clone to avoid reference issues
       const newBoard = JSON.parse(JSON.stringify(prev)) as BoardType;
-      
+
       // Make sure we have the card in our collection
       const card = newBoard.cards[cardId];
-      
+
       if (card) {
         // Update priority to emergency when moving to expedite
         if (isToExpedite) {
           card.priority = 'emergency';
         }
-        
+
         card.updated = new Date();
       }
-      
+
       // Remove card from all columns first
       newBoard.columns = newBoard.columns.map(column => ({
         ...column,
         cardIds: column.cardIds.filter(id => id !== cardId)
       }));
-      
+
       // Remove from archive
       newBoard.archivedCardIds = newBoard.archivedCardIds.filter(id => id !== cardId);
-      
+
       // Add to destination
       if (destinationColumnId === 'expedite') {
         // Mark the card as emergency priority
@@ -631,7 +632,7 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
         if (firstColumn) {
           firstColumn.cardIds.push(cardId);
         }
-      } 
+      }
       else if (destinationColumnId === 'archive') {
         newBoard.archivedCardIds.push(cardId);
       }
@@ -642,14 +643,14 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
           destColumn.cardIds.push(cardId);
         }
       }
-      
+
       // Ensure lastMoveTimestamp is updated
       return {
         ...newBoard,
         lastMoveTimestamp: Date.now()
       };
     });
-    
+
     // Force immediate save for expedite operations
     if (isToExpedite) {
       saveToFirebase(true);
@@ -664,7 +665,7 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
     const handleBeforeUnload = () => {
       try {
         localStorage.setItem('kanban-board', JSON.stringify(board));
-        
+
         // Only attempt Firebase save if we have a board ID and user
         if (boardId && user && !loading) {
           saveToFirebase(true).catch(e => console.error("Error in emergency save:", e));
@@ -673,7 +674,7 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
         console.error("Error in beforeunload handler:", e);
       }
     };
-    
+
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [board, boardId, user, loading, saveToFirebase]);
@@ -685,7 +686,7 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
       Object.values(board.cards).forEach(card => {
         if (card.movementHistory && card.movementHistory.length > 0) {
           //console.log(`Loaded card ${card.id} with ${card.movementHistory.length} movements:`, 
-            //JSON.stringify(card.movementHistory));
+          //JSON.stringify(card.movementHistory));
         }
       });
     }
@@ -711,7 +712,7 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
         setBoard(prevBoard => {
           // Only update if the card exists in our board
           if (!prevBoard.cards[event.detail.cardId]) return prevBoard;
-          
+
           // Create a new board object to ensure React detects the change
           const newBoard = {
             ...prevBoard,
@@ -724,7 +725,7 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
             },
             clientTimestamp: Date.now()
           };
-          
+
           return newBoard;
         });
       }
@@ -734,11 +735,11 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
     const handleFinalCardUpdate = (event: CustomEvent) => {
       if (event.detail.cardId && event.detail.updatedCard) {
         console.log(`Final card update event received for ${event.detail.cardId}`);
-        
+
         // Force a complete board refresh
         setBoard(prevBoard => {
           const newBoard = JSON.parse(JSON.stringify(prevBoard));
-          
+
           // Update the specific card
           if (newBoard.cards[event.detail.cardId]) {
             newBoard.cards[event.detail.cardId] = {
@@ -746,10 +747,10 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
               updated: new Date()
             };
           }
-          
+
           // Force timestamp update
           newBoard.clientTimestamp = event.detail.timestamp || Date.now();
-          
+
           return newBoard;
         });
       }
@@ -767,15 +768,15 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
     // Add a handler for complete UI refresh
     const handleCompleteUIRefresh = () => {
       console.log("Complete UI refresh requested");
-      
+
       // Force a complete board refresh with a new object reference
       setBoard(prevBoard => {
         // Create a completely new board object
         const newBoard = JSON.parse(JSON.stringify(prevBoard));
-        
+
         // Add a unique timestamp
         newBoard.clientTimestamp = Date.now() + Math.random();
-        
+
         return newBoard;
       });
     };
@@ -799,9 +800,9 @@ export const useBoard = (user: User | null, boardId?: string, isShared?: boolean
     };
   }, [boardId]);
 
-  return { 
-    board, 
-    setBoard, 
+  return {
+    board,
+    setBoard,
     loading,
     error,
     moveCard,

@@ -5,6 +5,9 @@ import './CardModal.css';
 import { getAuth } from 'firebase/auth';
 import { createLLMService } from '../../services/LLMService';
 import { formatTimeDuration, calculateTotalTimeInColumns, calculateTimeSinceLastMove } from '../../utils/CardMovement';
+import { saveToHistoricalCollection } from '../../services/historicalCardService';
+import { Timestamp } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 interface CardModalProps {
   isOpen: boolean;
@@ -33,7 +36,7 @@ const CardModal: React.FC<CardModalProps> = ({
 }) => {
   // Add state for edit mode
   const [isEditMode, setIsEditMode] = useState(false);
-  
+
   // State for edited card properties
   const [editedTitle, setEditedTitle] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
@@ -65,10 +68,10 @@ const CardModal: React.FC<CardModalProps> = ({
   // Add a consistent date formatting function
   const formatDate = (date: Date | string | number | null): string => {
     if (!date) return '';
-    
+
     // Create a new Date object to ensure consistent handling
     const dateObj = new Date(date);
-    
+
     // Use a consistent method that doesn't have timezone issues
     // This creates a date string in user's local timezone without time component
     return dateObj.toLocaleDateString(undefined, {
@@ -81,7 +84,7 @@ const CardModal: React.FC<CardModalProps> = ({
   // Convert date to YYYY-MM-DD format for input[type="date"]
   const dateToInputFormat = (date: string | number | Date | null | undefined): string => {
     if (!date) return '';
-    
+
     try {
       const dateObj = new Date(date);
       // Check if valid date before returning
@@ -96,7 +99,7 @@ const CardModal: React.FC<CardModalProps> = ({
     } catch (e) {
       console.error("Error parsing due date:", e);
     }
-    
+
     return '';
   };
 
@@ -131,7 +134,7 @@ const CardModal: React.FC<CardModalProps> = ({
     } else {
       document.body.classList.remove('modal-open');
     }
-    
+
     // Cleanup function to ensure class is removed when component unmounts
     return () => {
       document.body.classList.remove('modal-open');
@@ -153,45 +156,45 @@ const CardModal: React.FC<CardModalProps> = ({
   // Label handling
   const addLabel = () => {
     if (newLabelName.trim() === '') return;
-    
+
     const newLabel: CardLabel = {
       id: uuidv4(),
       name: newLabelName,
       color: newLabelColor
     };
-    
+
     setEditedLabels([...editedLabels, newLabel]);
     setNewLabelName('');
   };
-  
+
   const removeLabel = (labelId: string) => {
     setEditedLabels(editedLabels.filter(label => label.id !== labelId));
   };
-  
+
   // Checklist handling
   const addChecklistItem = () => {
     if (newChecklistItem.trim() === '') return;
-    
+
     const newItem: ChecklistItem = {
       id: uuidv4(),
       text: newChecklistItem,
       completed: false
     };
-    
+
     setEditedChecklist([...editedChecklist, newItem]);
     setNewChecklistItem('');
   };
-  
+
   const toggleChecklistItem = (itemId: string) => {
     setEditedChecklist(
-      editedChecklist.map(item => 
-        item.id === itemId 
-          ? { ...item, completed: !item.completed } 
+      editedChecklist.map(item =>
+        item.id === itemId
+          ? { ...item, completed: !item.completed }
           : item
       )
     );
   };
-  
+
   const removeChecklistItem = (itemId: string) => {
     setEditedChecklist(editedChecklist.filter(item => item.id !== itemId));
   };
@@ -199,13 +202,13 @@ const CardModal: React.FC<CardModalProps> = ({
   // User assignment handling
   const assignUser = () => {
     if (!userToAssign || assignedUsers.includes(userToAssign)) return;
-    
+
     // Get the user object from the shared users list
     const userObj = getSharedUsers().find(u => u.id === userToAssign);
-    
+
     // Always store the email if available for better cross-user compatibility
     const userIdToStore = userObj?.id || userToAssign;
-    
+
     const newAssignedUsers = [...assignedUsers, userIdToStore];
     console.log(`Assigning user ${userToAssign}, new list:`, newAssignedUsers);
     setAssignedUsers(newAssignedUsers);
@@ -219,11 +222,11 @@ const CardModal: React.FC<CardModalProps> = ({
   // Get shared users from the board
   const getSharedUsers = (): { id: string, name: string }[] => {
     if (!board) return [];
-    
+
     const auth = getAuth();
     const currentUser = auth.currentUser;
     const sharedUsers: { id: string, name: string }[] = [];
-    
+
     // Add current user/owner
     if (currentUser) {
       sharedUsers.push({
@@ -244,7 +247,7 @@ const CardModal: React.FC<CardModalProps> = ({
         }
       });
     }
-    
+
     // Add users from board.users collection if available
     if (board.users && Array.isArray(board.users)) {
       board.users.forEach(user => {
@@ -257,31 +260,31 @@ const CardModal: React.FC<CardModalProps> = ({
         }
       });
     }
-    
+
     return sharedUsers;
   };
 
   // Get user name from ID (email or uid)
   const getUserName = (userId: string): string => {
     if (!board) return "Unknown User";
-    
+
     // Check if it's the owner
     const auth = getAuth();
     const currentUser = auth.currentUser;
     if (currentUser && (userId === currentUser.uid || userId === currentUser.email)) {
       return currentUser.displayName || currentUser.email || "Current User";
     }
-    
+
     // Check if it's in shared emails - this is the key part that needs fixing
     if (board.shared && board.shared.includes(userId)) {
       return userId; // Return the email
     }
-    
+
     // NEW: Check if it's a direct email format - if so, just display it
     if (userId.includes('@') && userId.includes('.')) {
       return userId;
     }
-    
+
     // NEW: Check if we have a users collection in the board
     if (board.users && Array.isArray(board.users)) {
       const foundUser = board.users.find(u => u.id === userId || u.email === userId);
@@ -289,7 +292,7 @@ const CardModal: React.FC<CardModalProps> = ({
         return foundUser.name || foundUser.email || userId;
       }
     }
-    
+
     return "Unknown User";
   };
 
@@ -300,15 +303,15 @@ const CardModal: React.FC<CardModalProps> = ({
       if (isOpen && card && board) {
         // Get the latest card data from the board
         const updatedCard = board.cards[card.id];
-        
+
         if (updatedCard) {
           // Check if our card data needs updating
-          const isOutdated = 
+          const isOutdated =
             updatedCard.updated > card.updated ||
             updatedCard.title !== card.title ||
             updatedCard.description !== card.description ||
             updatedCard.priority !== card.priority;
-            
+
           if (isOutdated && onCardChange) {
             console.log('Updating card in modal with latest board data');
             onCardChange(updatedCard);
@@ -316,7 +319,7 @@ const CardModal: React.FC<CardModalProps> = ({
         }
       }
     };
-    
+
     window.addEventListener('board-saved', handleBoardSaved);
     return () => {
       window.removeEventListener('board-saved', handleBoardSaved);
@@ -326,7 +329,7 @@ const CardModal: React.FC<CardModalProps> = ({
   // Improve the handleSave function to ensure proper UI updates
   const handleSave = () => {
     if (!card || !board || !setBoard || !logActivity || !columnId || !saveBoard) return;
-    
+
     // Create updated card
     const updatedCard: CardType = {
       ...card,
@@ -348,7 +351,7 @@ const CardModal: React.FC<CardModalProps> = ({
       llmTimeEstimate: llmTimeEstimate,
       updated: new Date()
     };
-    
+
     // DIRECT UPDATE: Update the board state immediately
     setBoard(prevBoard => {
       // Create a new board object with the updated card
@@ -363,42 +366,42 @@ const CardModal: React.FC<CardModalProps> = ({
         // Add a special flag to force card updates
         forceCardUpdate: card.id
       };
-      
+
       return newBoard;
     });
-    
+
     // Call onCardChange to update the modal context
     if (onCardChange) {
       onCardChange(updatedCard);
     }
-    
+
     // Save the board first to ensure data is persisted
     saveBoard();
-    
+
     // Dispatch multiple events to ensure all components update
     setTimeout(() => {
       if (typeof window !== 'undefined') {
         // 1. Dispatch card-updated event
         console.log('Dispatching card-updated event for card:', updatedCard.id);
         window.dispatchEvent(new CustomEvent('card-updated', {
-          detail: { 
+          detail: {
             cardId: updatedCard.id,
             updatedCard: updatedCard
           }
         }));
-        
+
         // 2. Dispatch force-card-update event
         window.dispatchEvent(new CustomEvent('force-card-update', {
           detail: { cardId: updatedCard.id }
         }));
-        
+
         // 3. Dispatch board-updated event
         window.dispatchEvent(new CustomEvent('board-updated', {
           detail: { timestamp: Date.now() }
         }));
       }
     }, 50);
-    
+
     // Close the modal
     onClose();
   };
@@ -406,11 +409,30 @@ const CardModal: React.FC<CardModalProps> = ({
   // Delete card
   const handleDelete = () => {
     if (!card || !board || !setBoard || !logActivity || !columnId) return;
-    
+
     if (!window.confirm("Are you sure you want to delete this card?")) {
       return;
     }
-    
+
+    // If card is in last column, save to historical collection
+    const lastColumnId = board.columns[board.columns.length - 1].id;
+    const isInLastColumn = columnId === lastColumnId;
+    console.log(`[CardModal] Card is in last column: ${isInLastColumn}`);
+
+    if (isInLastColumn) {
+      // Ensure board and board.ownerId are available before calling
+      if (board && board.ownerId) {
+        saveToHistoricalCollection(
+          db,
+          board.ownerId, // Use the board's ownerId
+          card,
+          board,
+        );
+      } else {
+        console.error("Cannot save to historical collection: board or board.ownerId is missing.");
+      }
+    }
+
     const updatedBoard = {
       ...board,
       columns: board.columns.map(col => {
@@ -423,29 +445,30 @@ const CardModal: React.FC<CardModalProps> = ({
         return col;
       })
     };
-    
+
     // Also remove from the cards collection
     const { [card.id]: removedCard, ...remainingCards } = updatedBoard.cards;
     updatedBoard.cards = remainingCards;
-    
+
     if (setBoard) {
       setBoard(updatedBoard);
     }
-    
+
     if (logActivity) {
       logActivity(card.id, "Deleted card");
     }
-    
+
     onClose();
   };
 
   // Archive card
+  // CURRENLTY NOT WORKING: WHen working copy handle delete for historical ticket tracking stuff
   const handleArchive = () => {
     if (!card || !board || !setBoard || !logActivity || !columnId) return;
-    
+
     // Find the card to archive
     let cardToArchive: CardType | undefined;
-    
+
     if (columnId === "expedite-lane") {
       // Instead of checking expediteLane, simply use the cards collection
       cardToArchive = board.cards[card.id];
@@ -456,12 +479,12 @@ const CardModal: React.FC<CardModalProps> = ({
         cardToArchive = board.cards[card.id];
       }
     }
-    
+
     if (!cardToArchive) {
       console.error("Card not found for archiving");
       return;
     }
-    
+
     // Create updated board with card removed
     const updatedBoard = {
       ...board,
@@ -479,17 +502,17 @@ const CardModal: React.FC<CardModalProps> = ({
         cardToArchive
       ]
     };
-    
+
     // Update the board state
     if (setBoard) {
       setBoard(updatedBoard);
     }
-    
+
     // Log the activity
     if (logActivity) {
       logActivity(card.id, "Archived card");
     }
-    
+
     // Close the modal
     onClose();
   };
@@ -528,7 +551,7 @@ const CardModal: React.FC<CardModalProps> = ({
   );
 
   const renderEditField = (
-    label: string, 
+    label: string,
     content: React.ReactNode
   ) => (
     <div className="edit-layout-row">
@@ -547,7 +570,7 @@ const CardModal: React.FC<CardModalProps> = ({
     try {
       setIsGenerating(true);
       setError(null);
-      
+
       // Create context from the current card and board
       const context = `
         Card Title: ${editedTitle}
@@ -555,18 +578,18 @@ const CardModal: React.FC<CardModalProps> = ({
         Board Name: ${board?.title}
         Current Status: ${board?.columns.find(col => col.id === columnId)?.title || 'Unknown'}
       `;
-      
+
       // Create LLM service with available API key
       const llmService = createLLMService(apiKey || process.env.REACT_APP_OPENAI_API_KEY || '');
-      
+
       // Generate suggestions
       const suggestions = await llmService.generateAcceptanceCriteriaSuggestions(context);
-      
+
       // Append suggestions to the current description
-      const updatedDescription = editedDescription ? 
-        `${editedDescription}\n\n## Acceptance Criteria\n${suggestions}` : 
+      const updatedDescription = editedDescription ?
+        `${editedDescription}\n\n## Acceptance Criteria\n${suggestions}` :
         `## Acceptance Criteria\n${suggestions}`;
-      
+
       setEditedDescription(updatedDescription);
     } catch (err) {
       console.error('Error generating acceptance criteria:', err);
@@ -581,13 +604,13 @@ const CardModal: React.FC<CardModalProps> = ({
     try {
       setIsGeneratingContext(true);
       setContextError(null);
-      
+
       // Dummy implementation - you'll replace this with actual implementation later
       console.log('Generating codebase context...');
-      
+
       // Simulate API call with a timeout
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       // Dummy result
       const dummyContext = "This is a placeholder for generated codebase context.";
       setCodebaseContext(dummyContext);
@@ -604,13 +627,13 @@ const CardModal: React.FC<CardModalProps> = ({
     try {
       setIsGeneratingTimeEstimate(true);
       setTimeEstimateError(null);
-      
+
       // Dummy implementation - you'll replace this with actual implementation later
       console.log('Generating time estimate...');
-      
+
       // Simulate API call with a timeout
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       // Set dummy result
       setLlmTimeEstimate('4');
     } catch (err) {
@@ -634,15 +657,15 @@ const CardModal: React.FC<CardModalProps> = ({
     if (isOpen && card && board?.cards) {
       // Get latest card data directly from board
       const freshCard = board.cards[card.id];
-      
+
       if (freshCard) {
         console.log('Modal checking card data:');
         console.log('- Card ID:', card.id);
-        console.log('- Movement history length (modal):', 
+        console.log('- Movement history length (modal):',
           card.movementHistory?.length || 0);
-        console.log('- Movement history length (board):', 
+        console.log('- Movement history length (board):',
           freshCard.movementHistory?.length || 0);
-        
+
         // If data differs significantly, request parent component to update
         if (freshCard.movementHistory?.length !== card.movementHistory?.length) {
           console.log('Card data has changed significantly since modal opened');
@@ -659,7 +682,7 @@ const CardModal: React.FC<CardModalProps> = ({
 
   return (
     <div className="card-modal-backdrop" onClick={handleBackdropClick}>
-      <div 
+      <div
         className="card-modal"
         onClick={(e) => e.stopPropagation()}
       >
@@ -667,7 +690,7 @@ const CardModal: React.FC<CardModalProps> = ({
           <h2>{isEditMode ? 'Edit Card' : 'Card Details'}</h2>
           <button className="modal-close-btn" onClick={onClose}>×</button>
         </div>
-        
+
         <div className="card-modal-content">
           {isEditMode ? (
             // Edit Mode with two-column layout
@@ -680,7 +703,7 @@ const CardModal: React.FC<CardModalProps> = ({
                   className="card-input"
                 />
               )}
-              
+
               {renderEditField("Description",
                 <div>
                   <textarea
@@ -690,8 +713,8 @@ const CardModal: React.FC<CardModalProps> = ({
                     rows={4}
                   />
                   <div className="form-actions">
-                    <button 
-                      onClick={generateAcceptanceCriteria} 
+                    <button
+                      onClick={generateAcceptanceCriteria}
                       className="btn btn-secondary"
                       disabled={isGenerating}
                     >
@@ -701,7 +724,7 @@ const CardModal: React.FC<CardModalProps> = ({
                   </div>
                 </div>
               )}
-              
+
               {renderEditField("Codebase Context",
                 <div>
                   <textarea
@@ -712,8 +735,8 @@ const CardModal: React.FC<CardModalProps> = ({
                     readOnly
                   />
                   <div className="form-actions">
-                    <button 
-                      onClick={generateCodebaseContext} 
+                    <button
+                      onClick={generateCodebaseContext}
                       className="btn btn-secondary"
                       disabled={isGeneratingContext}
                     >
@@ -723,7 +746,7 @@ const CardModal: React.FC<CardModalProps> = ({
                   </div>
                 </div>
               )}
-              
+
               {renderEditField("Due Date",
                 <input
                   type="date"
@@ -732,9 +755,9 @@ const CardModal: React.FC<CardModalProps> = ({
                   className="card-input"
                 />
               )}
-              
+
               {renderEditField("Priority",
-                <select 
+                <select
                   value={editedPriority}
                   onChange={(e) => setEditedPriority(e.target.value as Priority)}
                   className="card-input"
@@ -744,9 +767,9 @@ const CardModal: React.FC<CardModalProps> = ({
                   <option value="normal">Normal</option>
                 </select>
               )}
-              
+
               {renderEditField("Type",
-                <select 
+                <select
                   value={editedType}
                   onChange={(e) => setEditedType(e.target.value as IssueType)}
                   className="card-input"
@@ -816,7 +839,7 @@ const CardModal: React.FC<CardModalProps> = ({
                   </div>
                 </div>
               )}
-              
+
               {renderEditField("Checklist",
                 <div>
                   <div className="checklist">
@@ -845,7 +868,7 @@ const CardModal: React.FC<CardModalProps> = ({
                   </div>
                 </div>
               )}
-              
+
               {renderEditField("Dev Time Estimate",
                 <div className="time-estimate-container">
                   <input
@@ -858,7 +881,7 @@ const CardModal: React.FC<CardModalProps> = ({
                   <span className="time-unit">days</span>
                 </div>
               )}
-              
+
               {renderEditField("LLM Time Estimate",
                 <div>
                   <div className="time-estimate-container">
@@ -872,8 +895,8 @@ const CardModal: React.FC<CardModalProps> = ({
                     <span className="time-unit">days</span>
                   </div>
                   <div className="form-actions">
-                    <button 
-                      onClick={generateTimeEstimate} 
+                    <button
+                      onClick={generateTimeEstimate}
                       className="btn btn-secondary"
                       disabled={isGeneratingTimeEstimate}
                     >
@@ -888,38 +911,38 @@ const CardModal: React.FC<CardModalProps> = ({
             // Display Mode
             <div className="card-display">
               <h3 className="card-title">{card.title}</h3>
-              
+
               {card.description && renderField("Description",
                 <div className="card-description">{card.description}</div>
               )}
-              
+
               {renderField("Codebase Context",
                 <div className="card-description">
                   {card.codebaseContext || <span className="empty-field">No codebase context available</span>}
                 </div>
               )}
-              
+
               <div className="card-meta">
                 {card.dueDate && renderField("Due Date",
                   <div className="status-badge">
                     {formatDate(card.dueDate)}
                   </div>
                 )}
-                
+
                 {/* Put priority and type side by side */}
                 <div className="card-meta-row">
                   {renderField("Priority", renderBadge('priority', card.priority))}
                   {renderField("Type", renderBadge('type', card.type))}
                 </div>
-                
+
                 {/* Time estimates side by side */}
                 <div className="card-meta-row">
-                  {renderField("Dev Time Estimate", 
+                  {renderField("Dev Time Estimate",
                     <div className="status-badge">
                       {card.devTimeEstimate ? `${card.devTimeEstimate} days` : 'Not estimated'}
                     </div>
                   )}
-                  {renderField("LLM Time Estimate", 
+                  {renderField("LLM Time Estimate",
                     <div className="status-badge">
                       {card.llmTimeEstimate ? `${card.llmTimeEstimate} days` : 'Not estimated'}
                     </div>
@@ -948,7 +971,7 @@ const CardModal: React.FC<CardModalProps> = ({
                   ))}
                 </div>
               )}
-              
+
               {editedChecklist.length > 0 && renderField("Checklist",
                 <div className="checklist">
                   {editedChecklist.map(item => (
@@ -967,7 +990,7 @@ const CardModal: React.FC<CardModalProps> = ({
             </div>
           )}
         </div>
-        
+
         <div className="card-modal-footer">
           {isEditMode ? (
             <>
@@ -997,7 +1020,7 @@ const CardModal: React.FC<CardModalProps> = ({
               {card.movementHistory && card.movementHistory.length > 0 ? (
                 <div className="movement-history">
                   <p>Total moves: {card.movementHistory.length}</p>
-                  
+
                   {(() => {
                     const timeSinceLastMove = calculateTimeSinceLastMove(card);
                     if (timeSinceLastMove !== null) {
@@ -1009,12 +1032,12 @@ const CardModal: React.FC<CardModalProps> = ({
                     }
                     return null;
                   })()}
-                  
+
                   <ul className="movement-list">
                     {card.movementHistory.map((movement, index) => {
                       const fromColumn = board?.columns.find(col => col.id === movement.fromColumnId);
                       const toColumn = board?.columns.find(col => col.id === movement.toColumnId);
-                      
+
                       // Fix the movement display section to only use properties that exist
                       let moveDate;
                       try {
@@ -1024,10 +1047,10 @@ const CardModal: React.FC<CardModalProps> = ({
                         console.error('Error parsing date:', e);
                         moveDate = new Date(); // Fallback
                       }
-                      
+
                       return (
                         <li key={index}>
-                          <strong>Moved:</strong> {fromColumn?.title || 'Unknown'} → {toColumn?.title || 'Unknown'} 
+                          <strong>Moved:</strong> {fromColumn?.title || 'Unknown'} → {toColumn?.title || 'Unknown'}
                           <span className="movement-date">
                             {moveDate.toLocaleDateString()} {moveDate.toLocaleTimeString()}
                           </span>

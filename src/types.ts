@@ -57,6 +57,13 @@ export interface CardTimeInColumn {
   durationMs?: number;   // optional precomputed duration
 }
 
+// 🆕 Aggregated time spent in columns for historical records
+export interface AggregatedTimeInColumn {
+  columnId: string;
+  columnName: string;
+  totalDurationMs: number;
+}
+
 export interface CardType {
   id: string;
   title: string;
@@ -145,3 +152,21 @@ export interface BoardType {
 export type Card = CardType;
 export type Column = ColumnType;
 export type Board = BoardType;
+
+// 🆕 Historical Card Type for long-term storage and analysis
+export interface HistoricalCardType {
+  id: string; // Original card ID
+  title: string;
+  description: string;
+  priority: Priority;
+  type: IssueType;
+  labels?: CardLabel[];
+  checklist?: ChecklistItem[];
+  dueDate?: string | Date | number | null;
+  originalBoardId: string;
+  boardTitle?: string;
+  aggregatedTimeInColumns: AggregatedTimeInColumn[];
+  codebaseContext?: string;
+  devTimeEstimate?: string;
+  llmTimeEstimate?: string;
+}

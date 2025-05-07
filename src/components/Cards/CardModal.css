@@ -34,6 +34,7 @@
     opacity: 0;
     transform: translateY(-20px) translateZ(0);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) translateZ(0);
@@ -119,9 +120,13 @@
   color: var(--text-primary);
 }
 
-.card-input, .card-textarea, .card-date-input,
-.card-priority-select, .card-type-select,
-.label-input, .checklist-input {
+.card-input,
+.card-textarea,
+.card-date-input,
+.card-priority-select,
+.card-type-select,
+.label-input,
+.checklist-input {
   width: 100%;
   padding: 0.5rem;
   border: 1px solid var(--border-color);
@@ -194,17 +199,18 @@
     max-height: 90vh;
     min-height: auto;
   }
-  
+
   .card-modal-footer {
     flex-direction: column-reverse;
     gap: 16px;
   }
-  
-  .card-modal-actions, .card-modal-danger-zone {
+
+  .card-modal-actions,
+  .card-modal-danger-zone {
     width: 100%;
     justify-content: space-between;
   }
-  
+
   .btn {
     padding: 12px 16px;
     font-size: 1rem;
@@ -352,12 +358,12 @@ body.modal-open {
     grid-template-columns: 1fr;
     gap: 0.25rem;
   }
-  
+
   .edit-field-label {
     padding-top: 0;
     margin-bottom: 0.3rem;
   }
-  
+
   .edit-field-content {
     margin-bottom: 1rem;
   }
