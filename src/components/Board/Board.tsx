@@ -6,6 +6,8 @@ import ArchivedCards from '../ArchivedCards';
 import { useSaveBoard } from '../../hooks/useSaveBoard';
 import { ModalProvider } from '../../context/ModalContext';
 import { recordCardMovement } from '../../utils/CardMovement';
+import { db } from '../../firebase';
+import { deleteDoc, doc as firestoreDoc } from 'firebase/firestore';
 // Remove ExpeditePane import since it's now used within columns
 
 interface BoardProps {
@@ -22,10 +24,10 @@ interface BoardProps {
   updateCard: (cardId: string, updates: Partial<CardType>) => void;
 }
 
-const Board: React.FC<BoardProps> = ({ 
-  board, 
-  setBoard, 
-  selectedCards, 
+const Board: React.FC<BoardProps> = ({
+  board,
+  setBoard,
+  selectedCards,
   toggleCardSelection,
   logActivity,
   activeDragId, // Add to component parameters
@@ -42,18 +44,16 @@ const Board: React.FC<BoardProps> = ({
   // Remove redundant code
   // Removed: activeCard state, isDragging state, onDragStart and onDragEnd functions
 
-  // Get archived cards from archivedCardIds
+  // Get archived cards from board.archivedCards
   const archivedCards = useMemo(() => {
-    return board.archivedCardIds
-      .map(id => board.cards[id])
-      .filter(Boolean);
-  }, [board.archivedCardIds, board.cards]);
+    return board.archivedCards || [];
+  }, [board.archivedCards]);
 
   // Check if any card in the board is expedited (has emergency priority)
   const hasExpeditedCards = useMemo(() => {
     // Get all card IDs from all columns
     const allCardIds = board.columns.flatMap(column => column.cardIds);
-    
+
     // Check if any of these cards has emergency priority
     return allCardIds.some(cardId => {
       const card = board.cards[cardId];
@@ -63,7 +63,7 @@ const Board: React.FC<BoardProps> = ({
 
   const handleAddColumn = () => {
     if (newColumnTitle.trim() === '') return;
-    
+
     const newColumn: ColumnType = {
       id: uuidv4(),
       title: newColumnTitle,
@@ -71,48 +71,61 @@ const Board: React.FC<BoardProps> = ({
       wipLimit: 0,
       isCollapsed: false
     };
-    
+
     setBoard(prev => ({
       ...prev,
       columns: [...prev.columns, newColumn]
     }));
-    
+
     setNewColumnTitle('');
     logActivity('board', `Added new column: ${newColumnTitle}`);
   };
 
   const handleRestoreCard = useCallback((cardId: string) => {
-    // Check if card exists
-    if (!board.cards[cardId]) return;
-    
-    // Get the card object
-    const restoredCard = board.cards[cardId];
-    const destination = board.columns[0]; // Default to first column
-    
+    // Find the archived card object
+    const archiveList = board.archivedCards || [];
+    const restoredCard = archiveList.find(c => c.id === cardId);
+    if (!restoredCard) return;
+    // Determine destination column based on original columnId, fallback to first
+    const origColId = restoredCard.currentColumnId;
+    const destination = board.columns.find(col => col.id === origColId) || board.columns[0];
+    // Append a new open time tracking entry for the restored column
+    const now = new Date();
+    const updatedTimeInColumns = [
+      ...(restoredCard.timeInColumns || []),
+      { columnId: destination.id, enteredAt: now }
+    ];
+    const cardWithTracking = { ...restoredCard, timeInColumns: updatedTimeInColumns };
+
     setBoard(prev => {
-      // Remove from archivedCardIds
+      // Remove card ID from archivedCardIds and archivedCards, then restore card with tracking
       const updatedArchivedCardIds = prev.archivedCardIds.filter(id => id !== cardId);
-      
+      const updatedArchivedCards = (prev.archivedCards || []).filter(c => c.id !== cardId);
+      const updatedCards = {
+        ...prev.cards,
+        [cardId]: cardWithTracking
+      };
       // Add to destination column
-      const updatedColumns = prev.columns.map(col => {
-        if (col.id === destination.id) {
-          return {
-            ...col,
-            cardIds: [...col.cardIds, cardId]
-          };
-        }
-        return col;
-      });
-      
+      const updatedColumns = prev.columns.map(col =>
+        col.id === destination.id
+          ? { ...col, cardIds: [...col.cardIds, cardId] }
+          : col
+      );
       return {
         ...prev,
         archivedCardIds: updatedArchivedCardIds,
+        archivedCards: updatedArchivedCards,
+        cards: updatedCards,
         columns: updatedColumns
       };
     });
-    
+
     logActivity(cardId, `Restored to ${destination.title}`);
-  }, [board.cards, board.columns, board.archivedCardIds, logActivity]);
+    // Remove document from Firestore historicalCards collection (if exists)
+    deleteDoc(
+      firestoreDoc(db, 'users', board.ownerId, 'boards', board.id, 'historicalCards', cardId)
+    ).catch(err => console.error('Error removing historical card:', err));
+  }, [board.archivedCards, board.archivedCardIds, board.columns, board.ownerId, board.id, logActivity]);
 
   // Move refs outside of useEffect to fix hooks violations
   const prevColCount = React.useRef(0);
@@ -122,13 +135,13 @@ const Board: React.FC<BoardProps> = ({
   useEffect(() => {
     const colChanged = prevColCount.current !== board.columns.length;
     const archivedChanged = prevArchivedCount.current !== board.archivedCardIds.length;
-    
+
     if (colChanged || archivedChanged) {
       console.log('Board state updated:', {
         columns: board.columns.length,
         archived: board.archivedCardIds.length
       });
-      
+
       // Update refs
       prevColCount.current = board.columns.length;
       prevArchivedCount.current = board.archivedCardIds.length;
@@ -139,7 +152,7 @@ const Board: React.FC<BoardProps> = ({
     if (board && setBoard) {
       const updatedBoard = recordCardMovement(board, cardId, fromColumnId, toColumnId) as BoardType;
       setBoard(updatedBoard);
-      
+
       // If you're syncing with Firebase, you might want to update here
       if (updateBoardInFirebase) {
         updateBoardInFirebase(updatedBoard);
@@ -166,9 +179,9 @@ const Board: React.FC<BoardProps> = ({
         _forceUpdateTimestamp: Date.now()
       }));
     };
-    
+
     window.addEventListener('force-board-rerender', handleForceUpdate);
-    
+
     return () => {
       window.removeEventListener('force-board-rerender', handleForceUpdate);
     };
@@ -176,29 +189,29 @@ const Board: React.FC<BoardProps> = ({
 
   return (
     <div className="board-container">
-      <ModalProvider 
-        board={board} 
-        setBoard={setBoard} 
+      <ModalProvider
+        board={board}
+        setBoard={setBoard}
         logActivity={logActivity}
         saveBoard={saveBoard}
         updateCard={updateCard}
       >
         {showArchived ? (
-          <ArchivedCards 
+          <ArchivedCards
             archivedCards={archivedCards}
             onRestore={handleRestoreCard}
           />
         ) : (
           <>
             {/* Remove global ExpeditePane - it's now per column */}
-            
+
             <div className="board">
               {board.columns.map(column => (
-                <Column 
-                  key={column.id} 
-                  column={column} 
-                  board={board} 
-                  setBoard={setBoard} 
+                <Column
+                  key={column.id}
+                  column={column}
+                  board={board}
+                  setBoard={setBoard}
                   selectedCards={selectedCards}
                   toggleCardSelection={toggleCardSelection}
                   logActivity={logActivity}
@@ -207,7 +220,7 @@ const Board: React.FC<BoardProps> = ({
                   updateCardMovement={handleCardMove}
                 />
               ))}
-              
+
               {isAddingColumn ? (
                 <div className="column">
                   <div className="column-header">
@@ -224,11 +237,11 @@ const Board: React.FC<BoardProps> = ({
                     <button onClick={handleAddColumn} className="save-button">
                       Add Column
                     </button>
-                    <button 
+                    <button
                       onClick={() => {
                         setIsAddingColumn(false);
                         setNewColumnTitle('');
-                      }} 
+                      }}
                       className="cancel-button"
                     >
                       Cancel
@@ -236,7 +249,7 @@ const Board: React.FC<BoardProps> = ({
                   </div>
                 </div>
               ) : (
-                <div 
+                <div
                   className="add-column-button"
                   onClick={() => setIsAddingColumn(true)}
                 >

@@ -421,16 +421,12 @@ const CardModal: React.FC<CardModalProps> = ({
 
     if (isInLastColumn) {
       // Ensure board and board.ownerId are available before calling
-      if (board && board.ownerId) {
-        saveToHistoricalCollection(
-          db,
-          board.ownerId, // Use the board's ownerId
-          card,
-          board,
-        );
-      } else {
-        console.error("Cannot save to historical collection: board or board.ownerId is missing.");
-      }
+      saveToHistoricalCollection(
+        db,
+        board.ownerId, // Use the board's ownerId
+        card,
+        board,
+      );
     }
 
     const updatedBoard = {
@@ -462,58 +458,69 @@ const CardModal: React.FC<CardModalProps> = ({
   };
 
   // Archive card
-  // CURRENLTY NOT WORKING: WHen working copy handle delete for historical ticket tracking stuff
   const handleArchive = () => {
-    if (!card || !board || !setBoard || !logActivity || !columnId) return;
+    if (!card || !board || !setBoard || !logActivity || !columnId || !saveBoard) return;
 
     // Find the card to archive
-    let cardToArchive: CardType | undefined;
-
-    if (columnId === "expedite-lane") {
-      // Instead of checking expediteLane, simply use the cards collection
-      cardToArchive = board.cards[card.id];
-    } else {
-      const column = board.columns.find(col => col.id === columnId);
-      if (column) {
-        // Get the card from the cards map instead of column.cards
-        cardToArchive = board.cards[card.id];
-      }
-    }
-
+    let cardToArchive = board.cards[card.id];
     if (!cardToArchive) {
       console.error("Card not found for archiving");
       return;
     }
+    // Stamp exitedAt and compute durationMs for the current column
+    const now = new Date();
+    const updatedTimeInColumns = cardToArchive.timeInColumns?.map(entry => {
+      if (entry.columnId === columnId && entry.exitedAt == null) {
+        const entered = entry.enteredAt instanceof Date ? entry.enteredAt : new Date(entry.enteredAt);
+        return { ...entry, exitedAt: now, durationMs: now.getTime() - entered.getTime() };
+      }
+      return entry;
+    }) || [];
+    cardToArchive = { ...cardToArchive, timeInColumns: updatedTimeInColumns };
 
-    // Create updated board with card removed
+    // If card is in last column, save to historical collection
+    const lastColumnId = board.columns[board.columns.length - 1].id;
+    const isInLastColumn = columnId === lastColumnId;
+    console.log(`[CardModal] Card is in last column: ${isInLastColumn}`);
+
+    if (isInLastColumn) {
+      // Save with updated timeInColumns to historical collection
+      saveToHistoricalCollection(
+        db,
+        board.ownerId,
+        cardToArchive,
+        board,
+      );
+    }
+
+    // Remove the card from active collections
+    const { [card.id]: _removed, ...remainingActiveCards } = board.cards;
+
+    // Deduplicate archived IDs and cards
+    const newArchivedIds = board.archivedCardIds?.includes(card.id)
+      ? board.archivedCardIds
+      : [...(board.archivedCardIds || []), card.id];
+    const newArchivedList = board.archivedCards?.some(c => c.id === card.id)
+      ? board.archivedCards
+      : [...(board.archivedCards || []), cardToArchive];
+
+    // Build the new board state
     const updatedBoard = {
       ...board,
-      columns: board.columns.map(col => {
-        if (col.id === columnId) {
-          return {
-            ...col,
-            cardIds: col.cardIds.filter(id => id !== card.id)
-          };
-        }
-        return col;
-      }),
-      archivedCards: [
-        ...(board.archivedCards || []),
-        cardToArchive
-      ]
+      columns: board.columns.map(col => col.id === columnId
+        ? { ...col, cardIds: col.cardIds.filter(id => id !== card.id) }
+        : col
+      ),
+      cards: remainingActiveCards,
+      archivedCardIds: newArchivedIds,
+      archivedCards: newArchivedList,
     };
 
-    // Update the board state
-    if (setBoard) {
-      setBoard(updatedBoard);
-    }
+    // Update and persist
+    setBoard(updatedBoard);
+    saveBoard();
 
-    // Log the activity
-    if (logActivity) {
-      logActivity(card.id, "Archived card");
-    }
-
-    // Close the modal
+    logActivity(card.id, "Archived card");
     onClose();
   };
 
