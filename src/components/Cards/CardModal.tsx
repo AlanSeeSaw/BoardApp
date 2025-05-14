@@ -747,7 +747,7 @@ const CardModal: React.FC<CardModalProps> = ({
                       className="btn btn-secondary"
                       disabled={isGeneratingContext}
                     >
-                      {isGeneratingContext ? 'Generating...' : 'Generate Codebase Context Ticket Help'}
+                      {isGeneratingContext ? 'Generating...' : 'Generate Codebase Context card Help'}
                     </button>
                     {contextError && <div className="error-message">{contextError}</div>}
                   </div>

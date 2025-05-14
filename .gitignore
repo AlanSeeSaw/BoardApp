@@ -26,3 +26,6 @@ yarn-error.log*
 
 # Python
 **/__pycache__/
+
+# Ignore the .firebase folder
+.firebase/

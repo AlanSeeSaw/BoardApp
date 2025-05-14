@@ -163,8 +163,6 @@ export interface HistoricalCardType {
   labels?: CardLabel[];
   checklist?: ChecklistItem[];
   dueDate?: string | Date | number | null;
-  originalBoardId: string;
-  boardTitle?: string;
   aggregatedTimeInColumns: AggregatedTimeInColumn[];
   codebaseContext?: string;
   devTimeEstimate?: string;

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import time
 import sys
 import shutil
-from system_prompts import PROMPT
+from .system_prompts import PROMPT
 from typing import Literal
 load_dotenv()
 
@@ -33,8 +33,8 @@ def download_repo(repo_url: str, target_dir: str) -> bool:
         print(f"An unexpected error occurred during git clone: {e}")
         return False
     
-def run_codex(ticket: str, dir_name: str) -> dict | str | None:
-    prompt = PROMPT.replace("{DIR_NAME}", dir_name).replace("{TICKET}", ticket)
+def run_codex(card: str, dir_name: str) -> dict | str | None:
+    prompt = PROMPT.replace("{DIR_NAME}", dir_name).replace("{CARD}", card)
     cmd = [
         "codex", 
         "-a", 
@@ -90,8 +90,8 @@ def run_codex(ticket: str, dir_name: str) -> dict | str | None:
 
     return last_message
 
-def run_claude(ticket: str, dir_name: str) -> dict | str | None:
-    prompt = PROMPT.replace("{DIR_NAME}", dir_name).replace("{TICKET}", ticket)
+def run_claude(card: str, dir_name: str) -> dict | str | None:
+    prompt = PROMPT.replace("{DIR_NAME}", dir_name).replace("{CARD}", card)
     cmd = [
         "claude",              # global CLI executable
         "-p", prompt,          # headless, one-shot
@@ -121,14 +121,7 @@ def run_claude(ticket: str, dir_name: str) -> dict | str | None:
 
     return json.loads(result.stdout)['result']
 
-if __name__ == "__main__":
-    # repo_name = "BoardApp"
-    # repo_owner = "AlanSeeSaw"
-    # repo_url = f"https://github.com/{repo_owner}/{repo_name}.git" 
-    # dir_name = f"./{repo_name}" 
-    
-    repo_name = "code_qa"
-    repo_owner = "jayden-hyman"
+def codebase_query(repo_name, repo_owner, card: str) -> dict | str | None:
     repo_url = f"https://github.com/{repo_owner}/{repo_name}.git" 
     dir_name = f"./{repo_name}" 
 
@@ -136,32 +129,33 @@ if __name__ == "__main__":
         print("Failed to download repository. Exiting.")
         sys.exit(1) # Exit if download fails
         
-    ticket = f"""
-    Title: Add more language support
-    Description: Add support for more languages to be able to be parsed by tree-sitter, need to figure out queries for each language.
-    """
-    
-    # ticket = f"""
-    # Title: Repo summary
-    # Description: Write a light summary of the readme in the repo.
-    # """
-
-
     print(f"Running Codex:\n\n")
     start_time = time.time()
-    response = run_codex(ticket, dir_name)
-    print(f"Ticket help: {response['ticket_help']}")
+    response = run_codex(card, dir_name)
+    print(f"card help: {response['card_help']}")
     print(f"Time estimates: {response['time_estimates']}")
     end_time = time.time()
     print(f"Time taken: {end_time - start_time} seconds")
     
-    # print(f"\n\nRunning Claude:\n\n")
-    # start_time = time.time()
-    # response = run_claude(ticket, dir_name)
-    # print(response)
-    # end_time = time.time()
-    # print(f"Time taken: {end_time - start_time} seconds")
-
-    # 4. Optional: Clean up the cloned repository
     print(f"Cleaning up {dir_name}...")
     shutil.rmtree(dir_name)
+    
+    return response
+
+if __name__ == "__main__":
+    # repo_name = "BoardApp"
+    # repo_owner = "AlanSeeSaw"
+    repo_name = "code_qa"
+    repo_owner = "jayden-hyman"
+        
+    card = f"""
+    Title: Add more language support
+    Description: Add support for more languages to be able to be parsed by tree-sitter, need to figure out queries for each language.
+    """
+    
+    # card = f"""
+    # Title: Repo summary
+    # Description: Write a light summary of the readme in the repo.
+    # """
+    
+    codebase_query(repo_name, repo_owner, card)

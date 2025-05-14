@@ -40,16 +40,10 @@ export async function saveToHistoricalCollection(
             labels: cardToSave.labels || [],
             checklist: cardToSave.checklist || [],
             dueDate: cardToSave.dueDate || null,
-
-            originalBoardId: board.id,
-            boardTitle: board.title || '',
-
             aggregatedTimeInColumns: aggregatedTime,
-
-            // Carry over any other relevant fields
-            codebaseContext: cardToSave.codebaseContext,
-            devTimeEstimate: cardToSave.devTimeEstimate,
-            llmTimeEstimate: cardToSave.llmTimeEstimate,
+            codebaseContext: cardToSave.codebaseContext || '',
+            devTimeEstimate: cardToSave.devTimeEstimate || '',
+            llmTimeEstimate: cardToSave.llmTimeEstimate || '',
         };
 
         // Remove undefined properties before saving to Firestore
