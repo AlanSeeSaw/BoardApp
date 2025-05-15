@@ -39,6 +39,10 @@ def call_llm(card, codebase_context, codebase_coding_estimate, codebase_qa_estim
 
 def get_historical_card_data():
     """ Get historical card data from the database. Do RAG and shit. """
+    
+    # Get summary for this bug type
+    
+    # Call RAG function, depending on number of results also get random similar cards (same type)
 
 def estimate_card(card, codebase_estimate):
     codebase_coding_estimate = codebase_estimate['time_estimates']['coding']

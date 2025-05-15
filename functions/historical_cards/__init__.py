@@ -1,1 +1,1 @@
-from .main import generate_embedding
+from .main import generate_embedding, update_historical_card_summary

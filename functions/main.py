@@ -6,7 +6,7 @@ from firebase_functions import https_fn
 from firebase_admin import initialize_app
 from codebase_query import codebase_query
 from card_time_estimate import estimate_card
-from historical_cards import generate_embedding
+from historical_cards import generate_embedding, update_historical_card_summary
 from firebase_functions import firestore_fn
 import json
 
@@ -47,18 +47,27 @@ def card_time_estimate(req: https_fn.Request) -> https_fn.Response:
 #         status=200
 #     )
 
+# TODO: Maybe recompute historical summary sometimes (or everytime) to make sure data is good.
+# TODO: Create a delete function for historical cards.
 # Only embeds on new historical cards, may need to switch to updates in the future. But keeping on created for no infinite loops.
 @firestore_fn.on_document_created(
     document="users/{userId}/boards/{boardId}/historicalCards/{cardId}"
 )
-def generate_historical_card_embedding(event: firestore_fn.Event[firestore_fn.DocumentSnapshot]):
-    """Fire when a historicalCard is created: compute and store its vector embedding."""
+def new_historical_card(event: firestore_fn.Event[firestore_fn.DocumentSnapshot]):
+    """Fire when a historicalCard is created: 
+        - Compute and store its vector embedding
+        - Update historical card summary
+    """
     snapshot = event.data
     if not snapshot:
         return
     data = snapshot.to_dict()
     
+    # Generate embedding for the historical card
     vector = generate_embedding(data)
     
+    # Update historical card with embedding
     snapshot.reference.update({"embedding": vector})
     
+    # Update historical cards summary
+    update_historical_card_summary(snapshot.reference, data)
