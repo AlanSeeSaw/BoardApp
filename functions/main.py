@@ -6,7 +6,7 @@ from firebase_functions import https_fn
 from firebase_admin import initialize_app
 from codebase_query import codebase_query
 from card_time_estimate import estimate_card
-from historical_cards import generate_embedding, update_historical_card_summary
+from historical_cards import generate_embedding, update_historical_card_summary, update_historical_card_summary_on_delete
 from firebase_functions import firestore_fn
 import json
 
@@ -71,3 +71,18 @@ def new_historical_card(event: firestore_fn.Event[firestore_fn.DocumentSnapshot]
     
     # Update historical cards summary
     update_historical_card_summary(snapshot.reference, data)
+
+@firestore_fn.on_document_deleted(
+    document="users/{userId}/boards/{boardId}/historicalCards/{cardId}"
+)
+def delete_historical_card(event: firestore_fn.Event[firestore_fn.DocumentSnapshot]):
+    """Fire when a historicalCard is deleted:
+        - Update historical card summary by removing its stats
+    """
+    print("inside delete_historical_card")
+    snapshot = event.data
+    if not snapshot:
+        return
+    data = snapshot.to_dict()
+
+    update_historical_card_summary_on_delete(snapshot.reference, data)

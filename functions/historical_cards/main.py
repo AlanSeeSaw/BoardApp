@@ -145,8 +145,106 @@ def update_historical_card_summary(doc_ref, data):
                     for col in column_duration_map }
         average_per_column_map[card_type] = avg_map
 
-        # 7) Write merged summary back to Firestore
+        # 7) Averages across all types per column (global)
+        # Sum durations and counts across all types for each column
+        overall_duration_by_column = {}
+        overall_count_by_column = {}
+        for type_map in summary.get("totalDurationByTypePerColumn", {}).values():
+            for col, dur in type_map.items():
+                overall_duration_by_column[col] = overall_duration_by_column.get(col, 0) + dur
+        for count_map in summary.get("totalCardsByTypePerColumn", {}).values():
+            for col, cnt in count_map.items():
+                overall_count_by_column[col] = overall_count_by_column.get(col, 0) + cnt
+        # Compute and set overall average per column
+        summary["averageDurationPerColumn"] = {
+            col: (overall_duration_by_column[col] / overall_count_by_column.get(col, 1))
+            for col in overall_duration_by_column
+        }
+        
+        # 8) Write merged summary back to Firestore
         tx.set(summary_ref, summary, merge=True)
 
     # Execute transactional update
     update_summary_tx(transaction)
+
+def update_historical_card_summary_on_delete(doc_ref, data):
+    """
+    Full-rebuild summary when a card is deleted.
+    """
+    db = firestore.Client()
+    summary_ref = (
+        doc_ref.parent.parent
+               .collection("historicalStats")
+               .document("summary")
+    )
+
+    # Fetch all remaining cards after deletion
+    cards = list(doc_ref.parent.stream())
+
+    # Initialize aggregates
+    total_cards = len(cards)
+    total_cards_by_type = {}
+    total_duration_by_type = {}
+    total_duration_by_type_per_column = {}
+    total_cards_by_type_per_column = {}
+
+    # Accumulate stats from each card
+    for card_doc in cards:
+        card = card_doc.to_dict()
+        ctype = card.get("type", "unknown")
+        # Count per type
+        total_cards_by_type[ctype] = total_cards_by_type.get(ctype, 0) + 1
+        # Sum durations for this card
+        entries = card.get("aggregatedTimeInColumns", [])
+        duration_sum = sum(e.get("totalDurationMs", 0) for e in entries)
+        total_duration_by_type[ctype] = total_duration_by_type.get(ctype, 0) + duration_sum
+
+        # Per-column breakdown
+        dur_map = total_duration_by_type_per_column.setdefault(ctype, {})
+        cnt_map = total_cards_by_type_per_column.setdefault(ctype, {})
+        for e in entries:
+            col = e.get("columnId")
+            dur = e.get("totalDurationMs", 0)
+            dur_map[col] = dur_map.get(col, 0) + dur
+            cnt_map[col] = cnt_map.get(col, 0) + 1
+
+    # Compute averages by type
+    average_duration_by_type = {
+        t: (total_duration_by_type[t] / total_cards_by_type[t]) if total_cards_by_type[t] > 0 else 0
+        for t in total_cards_by_type
+    }
+    # Compute averages by column per type
+    average_duration_by_type_per_column = {
+        t: {
+            col: (total_duration_by_type_per_column[t][col] / total_cards_by_type_per_column[t].get(col, 1))
+            for col in total_duration_by_type_per_column[t]
+        }
+        for t in total_duration_by_type_per_column
+    }
+
+    # Compute global per-column averages
+    overall_duration = {}
+    overall_count = {}
+    for col_map in total_duration_by_type_per_column.values():
+        for col, dur in col_map.items():
+            overall_duration[col] = overall_duration.get(col, 0) + dur
+    for cnt_map in total_cards_by_type_per_column.values():
+        for col, cnt in cnt_map.items():
+            overall_count[col] = overall_count.get(col, 0) + cnt
+    average_duration_per_column = {
+        col: (overall_duration[col] / overall_count.get(col, 1))
+        for col in overall_duration
+    }
+
+    # Build and write new summary
+    new_summary = {
+        "totalCards": total_cards,
+        "totalCardsByType": total_cards_by_type,
+        "totalDurationByType": total_duration_by_type,
+        "totalDurationByTypePerColumn": total_duration_by_type_per_column,
+        "totalCardsByTypePerColumn": total_cards_by_type_per_column,
+        "averageDurationByType": average_duration_by_type,
+        "averageDurationByTypePerColumn": average_duration_by_type_per_column,
+        "averageDurationPerColumn": average_duration_per_column,
+    }
+    summary_ref.set(new_summary)
