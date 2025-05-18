@@ -83,7 +83,6 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
 
   // Function to open the card modal
   const openCardModal = (card: CardType, columnId: string, currentBoard: Board) => {
-    console.log("ModalContext: Opening card modal", { cardId: card.id, columnId });
     setCurrentCard(card);
     setCurrentColumnId(columnId);
     setCurrentBoard(currentBoard);

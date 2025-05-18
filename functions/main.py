@@ -2,7 +2,7 @@
 # To get started, simply uncomment the below code or create your own.
 # Deploy with `firebase deploy`
 
-from firebase_functions import https_fn
+from firebase_functions import https_fn, options
 from firebase_admin import initialize_app
 from codebase_query import codebase_query
 from card_time_estimate import estimate_card
@@ -12,22 +12,18 @@ import json
 
 initialize_app()
 
-@https_fn.on_request()
-def card_time_estimate(req: https_fn.Request) -> https_fn.Response:
-    try:
-        body = req.get_json()
-        card = body["card"]
-        codebase_estimate = body["codebase_estimate"]
-    except Exception:
-        return https_fn.Response("❌ invalid JSON", status=400)
-
-    result = estimate_card(card, codebase_estimate)
-
-    return https_fn.Response(
-        json.dumps(result),
-        headers={"Content-Type": "application/json"},
-        status=200
-    )
+@https_fn.on_call()
+def card_time_estimate(req: https_fn.CallableRequest) -> dict:
+    # data is the incoming payload from the client
+    user_id = req.data.get("user_id")
+    board_id = req.data.get("board_id")
+    card = req.data.get("card")
+    codebase_context = req.data.get("codebase_context")
+    # Extract custom columns for time estimation
+    columns = req.data.get("columns", [])
+    # Delegate to estimate_card and return the result directly
+    output = estimate_card(user_id, board_id, card, codebase_context, columns)
+    return output
 
 # @https_fn.on_request()
 # def codebase_context(req: https_fn.Request) -> https_fn.Response:

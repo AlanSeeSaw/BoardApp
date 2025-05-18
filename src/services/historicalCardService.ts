@@ -43,7 +43,7 @@ export async function saveToHistoricalCollection(
             aggregatedTimeInColumns: aggregatedTime,
             codebaseContext: cardToSave.codebaseContext || '',
             devTimeEstimate: cardToSave.devTimeEstimate || '',
-            llmTimeEstimate: cardToSave.llmTimeEstimate || '',
+            timeEstimate: cardToSave.timeEstimate || undefined,
         };
 
         // Remove undefined properties before saving to Firestore

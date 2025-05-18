@@ -85,7 +85,10 @@ const processTimestamps = (data: any): BoardType => {
           })) : [],
           currentColumnId: card.currentColumnId || '',
           movementHistory: processedMovementHistory,
-          timeInColumns: Array.isArray(card.timeInColumns) ? card.timeInColumns : []
+          timeInColumns: Array.isArray(card.timeInColumns) ? card.timeInColumns : [],
+          codebaseContext: card.codebaseContext || '',
+          devTimeEstimate: card.devTimeEstimate || '',
+          timeEstimate: card.timeEstimate,
         };
       }
     });
@@ -99,7 +102,9 @@ const processTimestamps = (data: any): BoardType => {
       cardIds: Array.isArray(col.cardIds) ? [...col.cardIds] : [],
       wipLimit: typeof col.wipLimit === 'number' ? col.wipLimit : 0,
       isCollapsed: Boolean(col.isCollapsed),
-      category: col.category
+      category: col.category,
+      timeEstimationEnabled: Boolean(col.timeEstimationEnabled),
+      description: col.description || ''
     }));
   }
 

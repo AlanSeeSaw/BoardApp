@@ -10,6 +10,8 @@ interface HeaderProps {
   setShowStats: (show: boolean) => void;
   showArchived: boolean;
   setShowArchived: (show: boolean) => void;
+  showSettings: boolean;
+  setShowSettings: (show: boolean) => void;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   currentBoardId: string;
@@ -28,6 +30,8 @@ const Header: React.FC<HeaderProps> = ({
   setShowStats,
   showArchived,
   setShowArchived,
+  showSettings,
+  setShowSettings,
   searchTerm,
   setSearchTerm,
   currentBoardId,
@@ -42,14 +46,14 @@ const Header: React.FC<HeaderProps> = ({
     <header className="App-header">
       <div className="header-content">
         <div className="header-left">
-          <select 
-            value={currentBoardId} 
+          <select
+            value={currentBoardId}
             onChange={(e) => handleBoardSelection(e.target.value)}
             className={`board-selector ${theme}`}
           >
             <option value="">Select a board...</option>
             {availableBoards.map((board) => (
-              <option 
+              <option
                 key={`board-${board.id}${board.isShared ? '-shared' : ''}`}
                 value={board.id}
               >
@@ -57,14 +61,14 @@ const Header: React.FC<HeaderProps> = ({
               </option>
             ))}
           </select>
-          <button 
+          <button
             onClick={() => setIsBoardDialogOpen(true)}
             className={`header-button ${theme}`}
           >
             + New Board
           </button>
           {currentBoardId && !isSharedBoard && (
-            <button 
+            <button
               onClick={() => setIsSharingDialogOpen(true)}
               className={`header-button ${theme}`}
             >
@@ -75,22 +79,29 @@ const Header: React.FC<HeaderProps> = ({
         <div className={`header-right ${theme}`}>
           <div className={`header-controls ${theme}`}>
             <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} theme={theme} />
-            <button 
-              className={`header-button ${showArchived ? 'active' : ''} ${theme}`} 
+            <button
+              className={`header-button ${showArchived ? 'active' : ''} ${theme}`}
               onClick={() => setShowArchived(!showArchived)}
               title={showArchived ? "Hide archived cards" : "Show archived cards"}
             >
               {showArchived ? "Hide Archived" : "Show Archived"}
             </button>
-            <button 
-              className={`header-button ${showStats ? 'active' : ''} ${theme}`} 
+            <button
+              className={`header-button ${showStats ? 'active' : ''} ${theme}`}
               onClick={() => setShowStats(!showStats)}
               title={showStats ? "Hide stats panel" : "Show stats panel"}
             >
               {showStats ? "Hide Stats" : "Show Stats"}
             </button>
-            <button 
-              className={`header-button ${theme}`} 
+            <button
+              className={`header-button ${showSettings ? 'active' : ''} ${theme}`}
+              onClick={() => setShowSettings(!showSettings)}
+              title={showSettings ? "Hide Project Settings" : "Show Project Settings"}
+            >
+              {showSettings ? "Hide Settings" : "Settings"}
+            </button>
+            <button
+              className={`header-button ${theme}`}
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
             >

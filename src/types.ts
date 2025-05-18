@@ -16,7 +16,7 @@ export type Priority = 'emergency' | 'normal' | 'date-sensitive' | 'low' | 'medi
 export type IssueType = 'bug' | 'task' | 'feature';
 
 // Add column categories for workflow stages
-export type ColumnCategory = 
+export type ColumnCategory =
   | 'dpq'              // Dynamic Prioritization Queue
   | 'prioritized'      // Prioritized Queue
   | 'design'           // Planning/Design 
@@ -64,6 +64,17 @@ export interface AggregatedTimeInColumn {
   totalDurationMs: number;
 }
 
+// 🆕 New types for LLM time estimates
+export interface ColumnEstimate {
+  estimate: number;
+  justification?: string;
+}
+export interface TimeEstimate {
+  total: number;
+  justification: string;
+  columns: Record<string, ColumnEstimate>;
+}
+
 export interface CardType {
   id: string;
   title: string;
@@ -77,27 +88,31 @@ export interface CardType {
   checklist?: ChecklistItem[];
   isSelected?: boolean;
   archived?: boolean;
-  assignedUsers?: string[]; 
+  assignedUsers?: string[];
 
   // 🆕 Card tracking data
   currentColumnId: string;
   movementHistory?: CardMovement[];
   timeInColumns?: CardTimeInColumn[];
-  
+
   // 🆕 Additional fields for development tracking
   codebaseContext?: string;
   devTimeEstimate?: string;
-  llmTimeEstimate?: string;
+
+  // 🆕 Optional LLM time estimates per column and total
+  timeEstimate?: TimeEstimate;
 }
 
 export interface ColumnType {
   id: string;
   title: string;
   category?: ColumnCategory;
-  wipLimit: number; 
+  wipLimit: number;
   isCollapsed?: boolean;
   isExpedite?: boolean;
   cardIds: string[]; // Make required (not optional) to fix TypeScript errors
+  timeEstimationEnabled?: boolean;
+  description?: string;
 }
 
 export interface Activity {
@@ -166,5 +181,5 @@ export interface HistoricalCardType {
   aggregatedTimeInColumns: AggregatedTimeInColumn[];
   codebaseContext?: string;
   devTimeEstimate?: string;
-  llmTimeEstimate?: string;
+  timeEstimate?: TimeEstimate;
 }

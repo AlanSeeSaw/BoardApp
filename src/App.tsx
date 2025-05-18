@@ -3,6 +3,7 @@ import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay } from '@
 import './App.css';
 import Board from './components/Board/Board';
 import StatsPanel from './components/StatsPanel';
+import ProjectSettingsPanel from './components/ProjectSettingsPanel';
 import Auth from './components/Auth';
 import { useBoard } from './hooks/useBoard';
 import { useSaveBoard, saveCardMovementHistory } from './hooks/useSaveBoard';
@@ -12,7 +13,7 @@ import { ModalProvider } from './context/ModalContext';
 import { v4 as uuidv4 } from 'uuid';
 import BoardDialog from './components/BoardDialog';
 import BoardSharingComponent from './components/BoardSharing';
-import { BoardType } from './types';
+import { BoardType, ColumnType } from './types';
 import { initializeCardTracking } from './utils/CardMovement';
 import Header from './components/Header/Header';
 import { useBoardSharing } from './hooks/useBoardSharing';
@@ -29,34 +30,35 @@ function App() {
   const [savingDisabled, setSavingDisabled] = useState(false);
   const [firebaseBlocked, setFirebaseBlocked] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [isBoardDialogOpen, setIsBoardDialogOpen] = useState(false);
   const [isSharingDialogOpen, setIsSharingDialogOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [openAIApiKey, setOpenAIApiKey] = useState('');
 
   const { user, authChecked } = useAuth();
-  
+
   // Use the board sharing hook
-  const { 
-    availableBoards, 
-    isSharedBoard, 
-    currentBoardId, 
-    fetchBoards, 
-    handleBoardSelection, 
-    debugCheckSharedBoards, 
+  const {
+    availableBoards,
+    isSharedBoard,
+    currentBoardId,
+    fetchBoards,
+    handleBoardSelection,
+    debugCheckSharedBoards,
     refreshBoard,
     forceRefreshSharedBoard
   } = useBoardSharing(user);
 
   // Use the board hook
   const { board, setBoard, loading, updateCard, saveToFirebase } = useBoard(user, currentBoardId, isSharedBoard);
-  
+
   // Use the save board hook
   const { isSaving, hasUnsavedChanges, saveBoard } = useSaveBoard(
-    board, 
-    user, 
-    savingDisabled, 
-    firebaseBlocked, 
+    board,
+    user,
+    savingDisabled,
+    firebaseBlocked,
     currentBoardId,
     undefined,
     isSharedBoard
@@ -92,11 +94,11 @@ function App() {
   }, [user, currentBoardId, isSharedBoard]);
 
   // Use the drag and drop hook
-  const { 
-    activeDragId, 
-    activeCard, 
-    handleDragStart, 
-    handleDragEnd, 
+  const {
+    activeDragId,
+    activeCard,
+    handleDragStart,
+    handleDragEnd,
     handleDragCancel,
   } = useDragAndDrop(board, setBoard, saveBoard, handleSaveCardMovementHistory, logActivity);
 
@@ -124,7 +126,7 @@ function App() {
       const timer = setTimeout(() => {
         debugCheckSharedBoards();
       }, 2000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [user, debugCheckSharedBoards]);
@@ -132,11 +134,11 @@ function App() {
   // Periodically refresh shared boards effect
   useEffect(() => {
     if (!isSharedBoard) return;
-    
+
     const refreshInterval = setInterval(() => {
       forceRefreshSharedBoard(board, setBoard);
     }, 30000); // Refresh every 30 seconds
-    
+
     return () => clearInterval(refreshInterval);
   }, [isSharedBoard, forceRefreshSharedBoard, board, setBoard]);
 
@@ -145,12 +147,12 @@ function App() {
     if (board && !loading) {
       // Initialize tracking data for cards that don't have it yet
       const updatedBoard = initializeCardTracking(board);
-      
+
       // Only update if changes were made
       if (updatedBoard !== board) {
         console.log('Initializing card tracking data');
         setBoard(updatedBoard);
-        
+
         // Optionally, save to Firebase after initialization
         if (saveBoard) {
           setTimeout(() => saveBoard(), 100);  // Small delay to ensure state is updated
@@ -163,9 +165,9 @@ function App() {
   useEffect(() => {
     const forceUpdateHandler = (e: Event) => {
       // Force update by creating a new board object
-      setBoard(prev => ({...prev, _appForceUpdate: Date.now()}));
+      setBoard(prev => ({ ...prev, _appForceUpdate: Date.now() }));
     };
-    
+
     window.addEventListener('cardSaved', forceUpdateHandler);
     return () => window.removeEventListener('cardSaved', forceUpdateHandler);
   }, [setBoard]);
@@ -179,10 +181,10 @@ function App() {
         ...column,
         cardIds: column.cardIds.filter(cardId => {
           const card = board.cards[cardId];
-          return card && 
-            (showArchived || !card.archived) && 
-            (card.title.toLowerCase().includes(lowercaseSearch) || 
-             card.description.toLowerCase().includes(lowercaseSearch));
+          return card &&
+            (showArchived || !card.archived) &&
+            (card.title.toLowerCase().includes(lowercaseSearch) ||
+              card.description.toLowerCase().includes(lowercaseSearch));
         })
       }))
     };
@@ -222,6 +224,14 @@ function App() {
     }
   }, [isChatOpen, openAIApiKey]);
 
+  // Handler to save project settings
+  const handleSaveSettings = (updatedColumns: ColumnType[]) => {
+    const updatedBoard = { ...board, columns: updatedColumns };
+    console.log('updatedBoard FOR SETTINGS', updatedBoard);
+    updateBoardInFirebase(updatedBoard, setBoard, saveBoard);
+    setShowSettings(false);
+  };
+
   // If still checking authentication, show loading
   if (!authChecked) {
     return (
@@ -252,6 +262,8 @@ function App() {
         setShowStats={setShowStats}
         showArchived={showArchived}
         setShowArchived={setShowArchived}
+        showSettings={showSettings}
+        setShowSettings={setShowSettings}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         currentBoardId={currentBoardId}
@@ -269,7 +281,7 @@ function App() {
         onClose={() => setIsBoardDialogOpen(false)}
         onCreateBoard={handleCreateBoard}
       />
-      
+
       {/* Board Sharing Modal */}
       {isSharingDialogOpen && currentBoardId && (
         <div className="modal-backdrop">
@@ -284,15 +296,22 @@ function App() {
         </div>
       )}
 
-      <ModalProvider 
-        board={board} 
-        setBoard={setBoard} 
-        logActivity={logActivity} 
+      <ModalProvider
+        board={board}
+        setBoard={setBoard}
+        logActivity={logActivity}
         saveToFirebase={saveToFirebase}
         saveBoard={saveBoard}
         updateCard={updateCard}
       >
         <main className="main-content">
+          {showSettings && (
+            <ProjectSettingsPanel
+              board={board}
+              onSave={handleSaveSettings}
+              onClose={() => setShowSettings(false)}
+            />
+          )}
           {showStats && <StatsPanel board={board} />}
 
           {isSharedBoard && (
@@ -311,7 +330,7 @@ function App() {
             <div className="empty-board-state">
               <h2>No boards available</h2>
               <p>Create a new board to get started with your tasks</p>
-              <button 
+              <button
                 className="primary-button"
                 onClick={() => setIsBoardDialogOpen(true)}
               >
@@ -319,14 +338,14 @@ function App() {
               </button>
             </div>
           ) : (
-            <DndContext 
+            <DndContext
               sensors={sensors}
               onDragEnd={handleDragEnd}
               onDragStart={handleDragStart}
               onDragCancel={handleDragCancel}
               autoScroll={true}
             >
-              <Board 
+              <Board
                 board={searchTerm ? getFilteredBoard(board, searchTerm) : getFilteredBoard(board, "")}
                 setBoard={setBoard}
                 selectedCards={selectedCards}
@@ -334,17 +353,17 @@ function App() {
                 logActivity={logActivity}
                 activeDragId={activeDragId}
                 showArchived={showArchived}
-                updateBoardInFirebase={(updatedBoard: BoardType) => 
+                updateBoardInFirebase={(updatedBoard: BoardType) =>
                   updateBoardInFirebase(updatedBoard, setBoard, saveBoard)}
                 saveBoard={saveBoard}
                 updateCard={updateCard}
               />
-              
+
               {/* Improved DragOverlay component */}
               <DragOverlay adjustScale={false} zIndex={9999} dropAnimation={null}>
                 {activeCard && (
                   <div className="drag-overlay-wrapper">
-                    <Card 
+                    <Card
                       card={activeCard}
                       isSelected={selectedCards.includes(activeCard.id)}
                       toggleSelection={toggleCardSelection}
@@ -363,9 +382,9 @@ function App() {
       {user && !loading && (
         <>
           <ChatToggleButton onClick={toggleChat} isOpen={isChatOpen} />
-          <ChatOverlay 
-            isOpen={isChatOpen} 
-            onClose={() => setIsChatOpen(false)} 
+          <ChatOverlay
+            isOpen={isChatOpen}
+            onClose={() => setIsChatOpen(false)}
             boardData={board}
             apiKey={openAIApiKey}
           />

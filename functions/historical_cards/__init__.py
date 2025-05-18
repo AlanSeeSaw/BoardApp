@@ -1,1 +1,1 @@
-from .main import generate_embedding, update_historical_card_summary, update_historical_card_summary_on_delete
+from .main import generate_embedding, update_historical_card_summary, update_historical_card_summary_on_delete, get_historical_card_summary, fetch_similar_historical_cards, get_random_historical_card_by_type

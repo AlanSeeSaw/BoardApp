@@ -25,10 +25,10 @@ class LLMService {
     // Fix to use the provided apiKey parameter first, then fall back to env variable
     this.apiKey = apiKey || process.env.REACT_APP_OPENAI_API_KEY || '';
 
-    // Add a warning if no API key is available
-    if (!this.apiKey) {
-      console.warn('No API key provided for LLMService');
-    }
+    // // Add a warning if no API key is available
+    // if (!this.apiKey) {
+    //   console.warn('No API key provided for LLMService');
+    // }
   }
 
   /**

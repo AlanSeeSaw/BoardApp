@@ -238,7 +238,6 @@ const Card: React.FC<CardProps> = ({
       return;
     }
 
-    console.log("Opening card modal for", card.id, "in column", columnId);
     e.stopPropagation();
     openCardModal(card, columnId, board);
   };

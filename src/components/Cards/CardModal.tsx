@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card as CardType, Board, CardLabel, ChecklistItem, Priority, IssueType } from '../../types';
+import { Card as CardType, Board, CardLabel, ChecklistItem, Priority, IssueType, TimeEstimate } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import './CardModal.css';
 import { getAuth } from 'firebase/auth';
 import { createLLMService } from '../../services/LLMService';
 import { formatTimeDuration, calculateTotalTimeInColumns, calculateTimeSinceLastMove } from '../../utils/CardMovement';
 import { saveToHistoricalCollection } from '../../services/historicalCardService';
-import { Timestamp } from 'firebase/firestore';
+import { getTimeEstimate, TimeEstimatePayload } from '../../services/timeEstimateService';
 import { db } from '../../firebase';
 
 interface CardModalProps {
@@ -55,7 +55,8 @@ const CardModal: React.FC<CardModalProps> = ({
   // Add new state variables for the new features
   const [codebaseContext, setCodebaseContext] = useState('');
   const [devTimeEstimate, setDevTimeEstimate] = useState('');
-  const [llmTimeEstimate, setLlmTimeEstimate] = useState('');
+  const [timeEstimate, setTimeEstimate] = useState<TimeEstimate | undefined>(undefined);
+  const [showTEPanel, setShowTEPanel] = useState(false);
   const [isGeneratingContext, setIsGeneratingContext] = useState(false);
   const [isGeneratingTimeEstimate, setIsGeneratingTimeEstimate] = useState(false);
 
@@ -107,7 +108,7 @@ const CardModal: React.FC<CardModalProps> = ({
   useEffect(() => {
     if (card) {
       setEditedTitle(card.title);
-      setEditedDescription(card.description);
+      setEditedDescription(card.description || '');
       setEditedDueDate(() => {
         // Use the new helper function for consistent date handling
         return dateToInputFormat(card.dueDate);
@@ -121,7 +122,8 @@ const CardModal: React.FC<CardModalProps> = ({
       // Initialize the new fields
       setCodebaseContext(card.codebaseContext || '');
       setDevTimeEstimate(card.devTimeEstimate || '');
-      setLlmTimeEstimate(card.llmTimeEstimate || '');
+      // Load existing LLM time estimates
+      setTimeEstimate(card.timeEstimate || undefined);
       // Reset to display mode when a new card is loaded
       setIsEditMode(false);
     }
@@ -348,7 +350,7 @@ const CardModal: React.FC<CardModalProps> = ({
       timeInColumns: card.timeInColumns || [],
       codebaseContext: codebaseContext,
       devTimeEstimate: devTimeEstimate,
-      llmTimeEstimate: llmTimeEstimate,
+      timeEstimate: timeEstimate,
       updated: new Date()
     };
 
@@ -635,29 +637,35 @@ const CardModal: React.FC<CardModalProps> = ({
       setIsGeneratingTimeEstimate(true);
       setTimeEstimateError(null);
 
-      // Dummy implementation - you'll replace this with actual implementation later
-      console.log('Generating time estimate...');
-
-      // Simulate API call with a timeout
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Set dummy result
-      setLlmTimeEstimate('4');
-    } catch (err) {
+      console.log('Requesting time estimate via Firebase function...');
+      if (!board || !card) { // Added card check for safety
+        console.error('Board or card is not available for time estimate');
+        setTimeEstimateError('Board or card data is missing.');
+        return;
+      }
+      // Collect only the columns enabled for time estimation
+      const columnsForEstimate = board.columns
+        .filter(c => c.timeEstimationEnabled)
+        .map(c => ({ id: c.id, title: c.title, description: c.description }));
+      const payload: TimeEstimatePayload = {
+        user_id: board.ownerId,
+        board_id: board.id,
+        card: card!,
+        codebase_context: codebaseContext,
+        columns: columnsForEstimate
+      };
+      // Call the Firebase function
+      const result = await getTimeEstimate(payload);
+      console.log('Time estimate result:', result.data);
+      // Save structured result
+      setTimeEstimate(result.data);
+    } catch (err: any) {
       console.error('Error generating time estimate:', err);
-      setTimeEstimateError('Failed to generate time estimate. Please try again.');
+      setTimeEstimateError(err.message || 'Failed to generate time estimate. Please try again.');
     } finally {
       setIsGeneratingTimeEstimate(false);
     }
   };
-
-  // In the movement history section, add debugging and fix rendering
-  useEffect(() => {
-    // Debug to see if movement history is available
-    if (card && card.movementHistory) {
-      console.log('Card movement history:', card.movementHistory);
-    }
-  }, [card]);
 
   // Add a useEffect to ensure the card data is fresh 
   useEffect(() => {
@@ -666,13 +674,6 @@ const CardModal: React.FC<CardModalProps> = ({
       const freshCard = board.cards[card.id];
 
       if (freshCard) {
-        console.log('Modal checking card data:');
-        console.log('- Card ID:', card.id);
-        console.log('- Movement history length (modal):',
-          card.movementHistory?.length || 0);
-        console.log('- Movement history length (board):',
-          freshCard.movementHistory?.length || 0);
-
         // If data differs significantly, request parent component to update
         if (freshCard.movementHistory?.length !== card.movementHistory?.length) {
           console.log('Card data has changed significantly since modal opened');
@@ -684,6 +685,8 @@ const CardModal: React.FC<CardModalProps> = ({
       }
     }
   }, [isOpen, card, board, onCardChange]);
+
+  const displayTimeEstimate = timeEstimate?.total;
 
   if (!isOpen || !card) return null;
 
@@ -739,7 +742,6 @@ const CardModal: React.FC<CardModalProps> = ({
                     onChange={(e) => setCodebaseContext(e.target.value)}
                     className="card-textarea"
                     rows={4}
-                    readOnly
                   />
                   <div className="form-actions">
                     <button
@@ -894,7 +896,7 @@ const CardModal: React.FC<CardModalProps> = ({
                   <div className="time-estimate-container">
                     <input
                       type="number"
-                      value={llmTimeEstimate}
+                      value={timeEstimate?.total ?? ''}
                       className="time-estimate-input"
                       min="0"
                       disabled
@@ -949,12 +951,40 @@ const CardModal: React.FC<CardModalProps> = ({
                       {card.devTimeEstimate ? `${card.devTimeEstimate} days` : 'Not estimated'}
                     </div>
                   )}
-                  {renderField("LLM Time Estimate",
+                  {renderField("Total LLM Estimate",
+                    <div
+                      className="status-badge info-badge"
+                      onClick={() => setShowTEPanel(!showTEPanel)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {displayTimeEstimate ? `${timeEstimate.total} days` : 'Not estimated'}
+                    </div>
+                  )}
+                  {columnId && timeEstimate?.columns?.[columnId] && renderField("Column Estimate",
                     <div className="status-badge">
-                      {card.llmTimeEstimate ? `${card.llmTimeEstimate} days` : 'Not estimated'}
+                      {`${timeEstimate.columns[columnId].estimate} days`}
                     </div>
                   )}
                 </div>
+                {/* Details panel for LLM justification and per-column estimates */}
+                {showTEPanel && displayTimeEstimate && board && (
+                  <div className="time-estimate-panel">
+                    <h4>Total Justification</h4>
+                    <p>{timeEstimate.justification}</p>
+                    <h5>Per-Column Estimates</h5>
+                    <ul>
+                      {Object.entries(timeEstimate.columns).map(([colId, detail]) => {
+                        const col = board.columns.find(c => c.id === colId);
+                        return (
+                          <li key={colId}>
+                            <strong>{col?.title || colId}:</strong> {detail.estimate} days
+                            {detail.justification && <div className="column-justification">{detail.justification}</div>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Show assigned users */}

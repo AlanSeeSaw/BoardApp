@@ -141,7 +141,9 @@ function getColumnStructure(columns: ColumnType[]): any[] {
     title: col.title,
     isExpedite: !!(col as any).isExpedite,
     wipLimit: col.wipLimit,
-    cardIds: [...col.cardIds]
+    cardIds: [...col.cardIds],
+    timeEstimationEnabled: !!col.timeEstimationEnabled,
+    description: col.description || ''
   }));
 }
 
@@ -183,7 +185,9 @@ function getCardFingerprint(card: CardType): string {
         id: item.id,
         text: item.text || "",
         checked: !!item.completed
-      })) : []
+      })) : [],
+    // Include LLM time estimate total in fingerprint
+    timeEstimate: card.timeEstimate ?? null
   });
 }
 
@@ -465,6 +469,8 @@ export const useSaveBoard = (
           updates['ownerId'] = user.uid;
         }
 
+        console.log('updates from save board:', updates);
+
         // Update with merge to preserve other fields
         await setDoc(boardDocRef, updates, { merge: true });
 
@@ -493,6 +499,7 @@ export const useSaveBoard = (
       }
 
       lastSaveTimeRef.current = now;
+
 
       // Reset save attempts counter after successful save
       setTimeout(() => {

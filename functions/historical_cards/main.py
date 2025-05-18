@@ -3,10 +3,9 @@ from dotenv import load_dotenv
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
 from google.cloud.firestore_v1.vector import Vector
+import random
 
 load_dotenv()
-
-client = openai.OpenAI()
 
 def generate_embedding(data):
     """ Generate an embedding for a given text. """
@@ -27,6 +26,44 @@ def generate_embedding(data):
     )
     vector = response.data[0].embedding
     return vector
+
+def get_historical_card_summary(user_id: str, board_id: str) -> dict:
+    """
+    Get the historical card summary for a given user and board.
+    """
+    db = firestore.Client()
+    summary_ref = (
+        db.collection("users").document(user_id)
+          .collection("boards").document(board_id)
+          .collection("historicalStats")
+          .document("summary")
+          .get()
+    )
+    return summary_ref.to_dict()
+
+def get_random_historical_card_by_type(user_id: str, board_id: str, card_type: str, num_cards: int = 1) -> list:
+    """
+    Get a random historical card of a given type, returning a list of dicts.
+    """
+    db = firestore.Client()
+    coll_ref = (
+        db.collection("users").document(user_id)
+          .collection("boards").document(board_id)
+          .collection("historicalCards")
+    )
+    # Get all cards of this type
+    docs = list(coll_ref.where("type", "==", card_type).stream())
+    # Sample up to num_cards
+    sampled_docs = random.sample(docs, min(num_cards, len(docs)))
+    result = []
+    for doc in sampled_docs:
+        data = doc.to_dict() or {}
+        data["id"] = doc.id
+        # Convert per-column durations from ms to hours
+        for entry in data.get("aggregatedTimeInColumns", []):
+            entry["totalDurationHours"] = entry.pop("totalDurationMs", 0) / 3600000.0
+        result.append(data)
+    return result
 
 def fetch_similar_historical_cards(user_id: str, board_id: str, query_text: str) -> list:
     """
@@ -58,8 +95,11 @@ def fetch_similar_historical_cards(user_id: str, board_id: str, query_text: str)
     # Collect results
     results = []
     for doc in vector_query.stream():
-        item = doc.to_dict()
+        item = doc.to_dict() or {}
         item["id"] = doc.id
+        # Convert per-column durations from ms to hours
+        for entry in item.get("aggregatedTimeInColumns", []):
+            entry["totalDurationHours"] = entry.pop("totalDurationMs", 0) / 3600000.0
         results.append(item)
     return results
 

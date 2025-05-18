@@ -65,6 +65,7 @@ def run_codex(card: str, dir_name: str) -> dict | str | None:
         print(f"Stdout:\n{result.stdout}")
         return None  # Indicate failure
 
+    print(f"Result: {result.stdout}")
     # Process the JSON stream output
     last_message = None
     for line in result.stdout.strip().splitlines():
@@ -143,19 +144,18 @@ def codebase_query(repo_name, repo_owner, card: str) -> dict | str | None:
     return response
 
 if __name__ == "__main__":
-    # repo_name = "BoardApp"
-    # repo_owner = "AlanSeeSaw"
-    repo_name = "code_qa"
-    repo_owner = "jayden-hyman"
-        
-    card = f"""
-    Title: Add more language support
-    Description: Add support for more languages to be able to be parsed by tree-sitter, need to figure out queries for each language.
-    """
+    repo_name = "BoardApp"
+    repo_owner = "AlanSeeSaw"
+    # repo_name = "code_qa"
+    # repo_owner = "jayden-hyman"
     
-    # card = f"""
-    # Title: Repo summary
-    # Description: Write a light summary of the readme in the repo.
-    # """
+    card = f"""
+    Title: Create "Project Settings" (eg. # of devs + dev status)
+    Description: Dev status is part time vs full time (we could be as specific as number of hours a week).
+
+we should make a "project settings" or something where we add this stuff. We will have more project settings down the line (in the backlog) but let's start with this.
+
+This is used to feed into the board time estimate so the LLM knows how many people are working and what not.
+    """
     
     codebase_query(repo_name, repo_owner, card)
