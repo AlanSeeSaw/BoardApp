@@ -23,10 +23,9 @@ export const useAuth = () => {
         const { uid, email, displayName } = firebaseUser;
         
         setUser({
-          uid,
+          id: uid,
           email: email || '',
-          displayName: displayName || email || '',
-          name: displayName || email || '', // Add name field using displayName
+          name: displayName || email || '',
         });
       } else {
         setUser(null);
@@ -47,10 +46,9 @@ export const useAuth = () => {
       const { uid, email: userEmail, displayName } = userCredential.user;
       
       setUser({
-        uid,
+        id: uid,
         email: userEmail || '',
-        displayName: displayName || userEmail || '',
-        name: displayName || userEmail || '', // Add name field
+        name: displayName || userEmail || '',
       });
     } catch (err: any) {
       console.error('Sign in error:', err);
@@ -84,10 +82,9 @@ export const useAuth = () => {
       }
       
       setUser({
-        uid: firebaseUser.uid,
+        id: firebaseUser.uid,
         email: firebaseUser.email || '',
-        displayName: displayName || firebaseUser.email || '',
-        name: displayName || firebaseUser.email || '', // Add name field
+        name: displayName || firebaseUser.email || '',
       });
     } catch (err: any) {
       console.error('Sign up error:', err);

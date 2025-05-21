@@ -1,8 +1,8 @@
 import React from 'react';
-import { ColumnType } from '../../types';
+import { Column } from '../../types';
 
 interface ColumnCapacityProps {
-  column: ColumnType;
+  column: Column;
 }
 
 const ColumnCapacity: React.FC<ColumnCapacityProps> = ({ column }) => {

@@ -1,4 +1,4 @@
-import { CardType, ColumnType, AggregatedTimeInColumn, CardTimeInColumn } from '../types';
+import { Card, Column, AggregatedTimeInColumn, CardTimeInColumn } from '../types';
 import { Timestamp } from 'firebase/firestore';
 
 /**
@@ -29,21 +29,16 @@ function getMs(dateValue: Date | number | Timestamp | string | null | undefined)
  * @returns An array of AggregatedTimeInColumn objects.
  */
 export function calculateAggregatedTimeInColumns(
-    card: CardType,
-    boardColumns: ColumnType[],
+    card: Card,
+    boardColumns: Column[],
     actionTimestamp: Timestamp
 ): AggregatedTimeInColumn[] {
-    console.log(`[Debug] Calculating aggregated time for card: ${card.id} at action timestamp:`, actionTimestamp.toDate());
 
     const aggregatedTimes: { [key: string]: { totalDurationMs: number; columnName: string } } = {};
     const actionTimeMs = getMs(actionTimestamp);
-    console.log(`[Debug] Action time: ${actionTimeMs}`);
-
 
     if (card.timeInColumns && card.timeInColumns.length > 0) {
         card.timeInColumns.forEach((entry: CardTimeInColumn) => {
-            console.log(`[Debug] entry: ${entry}`);
-            console.log(`[Debug] enteredAt: ${entry.enteredAt}. exitedAt: ${entry.exitedAt}.`);
             const enteredAtMs = getMs(entry.enteredAt);
             let exitedAtMs = getMs(entry.exitedAt);
 
@@ -71,7 +66,6 @@ export function calculateAggregatedTimeInColumns(
                 } else {
                     aggregatedTimes[entry.columnId] = { totalDurationMs: durationMs, columnName };
                 }
-                console.log(`[Debug] Card ${card.id}, Column ${columnName} (${entry.columnId}): entered ${new Date(enteredAtMs).toISOString()}, exited ${new Date(exitedAtMs).toISOString()}, duration ${durationMs}ms`);
             } else {
                 console.warn(`[Debug] Card ${card.id}, Column ${entry.columnId}: Invalid time entry. Entered: ${enteredAtMs}, Exited: ${exitedAtMs}`);
             }
@@ -86,6 +80,79 @@ export function calculateAggregatedTimeInColumns(
         totalDurationMs: data.totalDurationMs,
     }));
 
-    console.log(`[Debug] Card ${card.id} aggregated time calculation result:`, result);
     return result;
 } 
+
+/**
+ * Formats the time duration (in milliseconds) as a human-readable string
+ */
+export const formatTimeDuration = (durationMs: number): string => {
+    const days = Math.floor(durationMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((durationMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+  
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
+  
+  /**
+   * Calculates the total time spent in all columns
+   */
+  export const calculateTotalTimeInColumns = (card: Card): number => {
+    if (!card.timeInColumns || card.timeInColumns.length === 0) return 0;
+  
+    const now = new Date().getTime();
+  
+    return card.timeInColumns.reduce((total, record) => {
+      // If we have a pre-calculated duration, use it
+      if (typeof record.durationMs === 'number') {
+        return total + record.durationMs;
+      }
+  
+      // Calculate duration based on entry and exit times
+      const enteredAt = record.enteredAt instanceof Date ?
+        record.enteredAt.getTime() :
+        typeof record.enteredAt === 'number' ? record.enteredAt : new Date(record.enteredAt).getTime();
+  
+      const exitedAt = record.exitedAt ?
+        (record.exitedAt instanceof Date ? record.exitedAt.getTime() :
+          typeof record.exitedAt === 'number' ? record.exitedAt : new Date(record.exitedAt).getTime()) :
+        now;
+  
+      return total + (exitedAt - enteredAt);
+    }, 0);
+  };
+  
+  /**
+   * Calculates time since the card was last moved between columns
+   * @param card The card to check
+   * @returns Time in milliseconds since last movement, or null if no movement history exists
+   */
+  export const calculateTimeSinceLastMove = (card: Card): number => {
+    if (!card.movementHistory || card.movementHistory.length === 0) {
+      return calculateTotalTimeInColumns(card);
+    }
+  
+    // Find the most recent movement
+    const lastMove = card.movementHistory.reduce((latest, current) => {
+      const currentMoveTime = current.movedAt instanceof Date ?
+        current.movedAt.getTime() :
+        new Date(current.movedAt).getTime();
+  
+      const latestMoveTime = latest.movedAt instanceof Date ?
+        latest.movedAt.getTime() :
+        new Date(latest.movedAt).getTime();
+  
+      return currentMoveTime > latestMoveTime ? current : latest;
+    }, card.movementHistory[0]);
+  
+    // Calculate time difference between now and the last move
+    const lastMoveTime = lastMove.movedAt instanceof Date ?
+      lastMove.movedAt.getTime() :
+      new Date(lastMove.movedAt).getTime();
+  
+    const now = new Date().getTime();
+    return now - lastMoveTime;
+  };
+  

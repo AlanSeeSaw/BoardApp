@@ -1,6 +1,6 @@
 import React from 'react';
 import { Board } from '../types';
-import { formatTimeDuration } from '../utils/CardMovement';
+import { formatTimeDuration } from '../utils/cardUtils';
 
 interface StatsPanelProps {
   board: Board;
@@ -10,17 +10,13 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ board }) => {
   // Calculate total cards using the card IDs rather than the cards array
   const totalCards = board.columns.reduce((total, col) => total + col.cardIds.length, 0);
   
-  // Use archivedCardIds instead of archivedCards for the normalized structure
-  const totalArchivedCards = board.archivedCardIds ? board.archivedCardIds.length : 0;
+  const totalArchivedCards = board.archivedCards ? board.archivedCards.length : 0;
   
   // Get cards per column using cardIds
   const cardsPerColumn = board.columns.map(col => ({ 
     name: col.title, 
     count: col.cardIds.length 
   }));
-  
-  // Get the latest activities (up to 10)
-  const recentActivities = board.activities?.slice(0, 10) || [];
 
   return (
     <div className="stats-panel">
@@ -41,24 +37,6 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ board }) => {
             </li>
           ))}
         </ul>
-      </div>
-      
-      <div className="stats-section">
-        <h3>Recent Activity</h3>
-        {recentActivities.length > 0 ? (
-          <ul className="activity-list">
-            {recentActivities.map(activity => (
-              <li key={activity.id}>
-                <span className="activity-time">
-                  {new Date(activity.timestamp).toLocaleTimeString()}
-                </span>
-                <span className="activity-action">{activity.action}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No recent activity</p>
-        )}
       </div>
       
       <div className="stats-section">

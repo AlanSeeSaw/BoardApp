@@ -1,4 +1,4 @@
-import { BoardType, IssueType, Priority } from '../types';
+import { Board, IssueType, Priority } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 export const ISSUE_TYPES: IssueType[] = ['task', 'bug', 'feature'];
@@ -11,12 +11,13 @@ export const PRIORITIES: Priority[] = [
   'date-sensitive'
 ];
 
-export const initialBoard: BoardType = {
-  id: '',  // This will be set when creating a new board
-  title: '',  // This will be set when creating a new board
+export const initialBoard: Board = {
+  id: '',
+  title: '',
   ownerId: '',
+  createdAt: new Date(),
+  updatedAt: new Date(),
   
-  // Normalized structure - cards mapped by their IDs
   cards: {},
   
   // Columns with cardIds instead of embedded cards
@@ -82,16 +83,8 @@ export const initialBoard: BoardType = {
       wipLimit: 0,
     }
   ],
-  
-
-  // IDs for archived cards
-  archivedCardIds: [],
-  
-  activities: [],
-  clientTimestamp: Date.now(),
   users: [],
-  
-  // For backward compatibility (can be removed later)
-
-  archivedCards: []
+  archivedCards: [],
+  ownerEmail: '',
+  ownerName: '',
 };

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Card as CardType, Board, CardLabel, ChecklistItem, Priority, IssueType, TimeEstimate } from '../../types';
+import { Card as CardType, Board, CardLabel, ChecklistItem, Priority, IssueType, TimeEstimate, User } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import './CardModal.css';
-import { getAuth } from 'firebase/auth';
 import { createLLMService } from '../../services/LLMService';
-import { formatTimeDuration, calculateTotalTimeInColumns, calculateTimeSinceLastMove } from '../../utils/CardMovement';
+import { calculateTimeSinceLastMove, formatTimeDuration } from '../../utils/cardUtils';
 import { saveToHistoricalCollection } from '../../services/historicalCardService';
 import { getTimeEstimate, TimeEstimatePayload } from '../../services/timeEstimateService';
 import { db } from '../../firebase';
+
+// TODO: down the line add conflict dectection (if change time is past since we started editing, give message to user)
+// This would come with a card editing overhaul where we have trello style
 
 interface CardModalProps {
   isOpen: boolean;
@@ -15,11 +17,10 @@ interface CardModalProps {
   card: CardType | null;
   columnId: string | null;
   board: Board | null;
-  setBoard: React.Dispatch<React.SetStateAction<Board>> | null;
-  logActivity: ((cardId: string, action: string) => void) | null;
-  onCardChange?: (updatedCard: CardType) => void;
   apiKey?: string; // Optional API key for LLM service
-  saveBoard: () => void;
+  updateCard: (card: CardType) => void;
+  deleteCard: (cardId: string, columnId: string) => void;
+  archiveCard: (card: CardType, columnId: string) => void;
 }
 
 const CardModal: React.FC<CardModalProps> = ({
@@ -28,11 +29,10 @@ const CardModal: React.FC<CardModalProps> = ({
   card,
   columnId,
   board,
-  setBoard,
-  logActivity,
-  onCardChange,
   apiKey,
-  saveBoard
+  updateCard,
+  deleteCard,
+  archiveCard,
 }) => {
   // Add state for edit mode
   const [isEditMode, setIsEditMode] = useState(false);
@@ -55,7 +55,7 @@ const CardModal: React.FC<CardModalProps> = ({
   // Add new state variables for the new features
   const [codebaseContext, setCodebaseContext] = useState('');
   const [devTimeEstimate, setDevTimeEstimate] = useState('');
-  const [timeEstimate, setTimeEstimate] = useState<TimeEstimate | undefined>(undefined);
+  const [timeEstimate, setTimeEstimate] = useState<TimeEstimate | null>(null);
   const [showTEPanel, setShowTEPanel] = useState(false);
   const [isGeneratingContext, setIsGeneratingContext] = useState(false);
   const [isGeneratingTimeEstimate, setIsGeneratingTimeEstimate] = useState(false);
@@ -123,7 +123,7 @@ const CardModal: React.FC<CardModalProps> = ({
       setCodebaseContext(card.codebaseContext || '');
       setDevTimeEstimate(card.devTimeEstimate || '');
       // Load existing LLM time estimates
-      setTimeEstimate(card.timeEstimate || undefined);
+      setTimeEstimate(card.timeEstimate || null);
       // Reset to display mode when a new card is loaded
       setIsEditMode(false);
     }
@@ -201,14 +201,11 @@ const CardModal: React.FC<CardModalProps> = ({
     setEditedChecklist(editedChecklist.filter(item => item.id !== itemId));
   };
 
-  // User assignment handling
   const assignUser = () => {
     if (!userToAssign || assignedUsers.includes(userToAssign)) return;
 
-    // Get the user object from the shared users list
-    const userObj = getSharedUsers().find(u => u.id === userToAssign);
+    const userObj = board?.users.find(u => u.id === userToAssign);
 
-    // Always store the email if available for better cross-user compatibility
     const userIdToStore = userObj?.id || userToAssign;
 
     const newAssignedUsers = [...assignedUsers, userIdToStore];
@@ -218,121 +215,25 @@ const CardModal: React.FC<CardModalProps> = ({
   };
 
   const removeAssignedUser = (userId: string) => {
-    setAssignedUsers(assignedUsers.filter(id => id !== userId));
+    setAssignedUsers(assignedUsers.filter(u => u !== userId));
   };
 
-  // Get shared users from the board
-  const getSharedUsers = (): { id: string, name: string }[] => {
-    if (!board) return [];
-
-    const auth = getAuth();
-    const currentUser = auth.currentUser;
-    const sharedUsers: { id: string, name: string }[] = [];
-
-    // Add current user/owner
-    if (currentUser) {
-      sharedUsers.push({
-        id: currentUser.email || currentUser.uid || '', // Add fallback empty string
-        name: currentUser.displayName || currentUser.email || 'Current User'
-      });
-    }
-
-    // Add shared users from board
-    if (board.shared && board.shared.length > 0) {
-      // Add each user from shared emails
-      board.shared.forEach(email => {
-        if (email && (!currentUser || email !== currentUser.email)) {
-          sharedUsers.push({
-            id: email, // Use email as ID for consistency
-            name: email
-          });
-        }
-      });
-    }
-
-    // Add users from board.users collection if available
-    if (board.users && Array.isArray(board.users)) {
-      board.users.forEach(user => {
-        // Only add if not already added
-        if (!sharedUsers.some(u => u.id === user.id || u.id === user.email)) {
-          sharedUsers.push({
-            id: user.email || user.id || '', // Add fallback empty string
-            name: user.name || user.email || user.id || ''
-          });
-        }
-      });
-    }
-
-    return sharedUsers;
+  const getUserName = (userId: string) => {
+    const user = board?.users.find(u => u.id === userId);
+    return user?.name;
   };
 
-  // Get user name from ID (email or uid)
-  const getUserName = (userId: string): string => {
-    if (!board) return "Unknown User";
+  const handleSave = async () => {
+    if (!card || !board || !columnId) return;
 
-    // Check if it's the owner
-    const auth = getAuth();
-    const currentUser = auth.currentUser;
-    if (currentUser && (userId === currentUser.uid || userId === currentUser.email)) {
-      return currentUser.displayName || currentUser.email || "Current User";
-    }
+    // Bug with timeInColumns being undefined, this is the current fix.
+    // TODO: In the future, maybe make a sanitize function that makes sure stuff like this doesn't happen?
+    // Idk best practice
+    const fixedTimeInColumns = (card.timeInColumns || []).map(entry => ({
+      ...entry,
+      exitedAt: entry.exitedAt === undefined ? null : entry.exitedAt,
+    }));
 
-    // Check if it's in shared emails - this is the key part that needs fixing
-    if (board.shared && board.shared.includes(userId)) {
-      return userId; // Return the email
-    }
-
-    // NEW: Check if it's a direct email format - if so, just display it
-    if (userId.includes('@') && userId.includes('.')) {
-      return userId;
-    }
-
-    // NEW: Check if we have a users collection in the board
-    if (board.users && Array.isArray(board.users)) {
-      const foundUser = board.users.find(u => u.id === userId || u.email === userId);
-      if (foundUser) {
-        return foundUser.name || foundUser.email || userId;
-      }
-    }
-
-    return "Unknown User";
-  };
-
-  // Add an event listener for board-saved events
-  useEffect(() => {
-    const handleBoardSaved = () => {
-      // If the modal is open and we have a card and board
-      if (isOpen && card && board) {
-        // Get the latest card data from the board
-        const updatedCard = board.cards[card.id];
-
-        if (updatedCard) {
-          // Check if our card data needs updating
-          const isOutdated =
-            updatedCard.updated > card.updated ||
-            updatedCard.title !== card.title ||
-            updatedCard.description !== card.description ||
-            updatedCard.priority !== card.priority;
-
-          if (isOutdated && onCardChange) {
-            console.log('Updating card in modal with latest board data');
-            onCardChange(updatedCard);
-          }
-        }
-      }
-    };
-
-    window.addEventListener('board-saved', handleBoardSaved);
-    return () => {
-      window.removeEventListener('board-saved', handleBoardSaved);
-    };
-  }, [isOpen, card, board, onCardChange]);
-
-  // Improve the handleSave function to ensure proper UI updates
-  const handleSave = () => {
-    if (!card || !board || !setBoard || !logActivity || !columnId || !saveBoard) return;
-
-    // Create updated card
     const updatedCard: CardType = {
       ...card,
       title: editedTitle,
@@ -347,62 +248,18 @@ const CardModal: React.FC<CardModalProps> = ({
       type: editedType,
       assignedUsers: assignedUsers,
       currentColumnId: columnId,
-      timeInColumns: card.timeInColumns || [],
+      timeInColumns: fixedTimeInColumns,
       codebaseContext: codebaseContext,
       devTimeEstimate: devTimeEstimate,
-      timeEstimate: timeEstimate,
-      updated: new Date()
+      timeEstimate: timeEstimate || null,
+      updatedAt: new Date()
     };
 
-    // DIRECT UPDATE: Update the board state immediately
-    setBoard(prevBoard => {
-      // Create a new board object with the updated card
-      const newBoard = {
-        ...prevBoard,
-        cards: {
-          ...prevBoard.cards,
-          [card.id]: updatedCard
-        },
-        // Force a re-render with a unique timestamp
-        clientTimestamp: Date.now(),
-        // Add a special flag to force card updates
-        forceCardUpdate: card.id
-      };
-
-      return newBoard;
-    });
-
-    // Call onCardChange to update the modal context
-    if (onCardChange) {
-      onCardChange(updatedCard);
+    try {
+      updateCard(updatedCard);
+    } catch (err) {
+      console.error('Failed to update card:', err);
     }
-
-    // Save the board first to ensure data is persisted
-    saveBoard();
-
-    // Dispatch multiple events to ensure all components update
-    setTimeout(() => {
-      if (typeof window !== 'undefined') {
-        // 1. Dispatch card-updated event
-        console.log('Dispatching card-updated event for card:', updatedCard.id);
-        window.dispatchEvent(new CustomEvent('card-updated', {
-          detail: {
-            cardId: updatedCard.id,
-            updatedCard: updatedCard
-          }
-        }));
-
-        // 2. Dispatch force-card-update event
-        window.dispatchEvent(new CustomEvent('force-card-update', {
-          detail: { cardId: updatedCard.id }
-        }));
-
-        // 3. Dispatch board-updated event
-        window.dispatchEvent(new CustomEvent('board-updated', {
-          detail: { timestamp: Date.now() }
-        }));
-      }
-    }, 50);
 
     // Close the modal
     onClose();
@@ -410,7 +267,7 @@ const CardModal: React.FC<CardModalProps> = ({
 
   // Delete card
   const handleDelete = () => {
-    if (!card || !board || !setBoard || !logActivity || !columnId) return;
+    if (!card || !board || !columnId) return;
 
     if (!window.confirm("Are you sure you want to delete this card?")) {
       return;
@@ -421,8 +278,8 @@ const CardModal: React.FC<CardModalProps> = ({
     const isInLastColumn = columnId === lastColumnId;
     console.log(`[CardModal] Card is in last column: ${isInLastColumn}`);
 
+    // TODO update this to use new saving system
     if (isInLastColumn) {
-      // Ensure board and board.ownerId are available before calling
       saveToHistoricalCollection(
         db,
         board.ownerId, // Use the board's ownerId
@@ -431,37 +288,13 @@ const CardModal: React.FC<CardModalProps> = ({
       );
     }
 
-    const updatedBoard = {
-      ...board,
-      columns: board.columns.map(col => {
-        if (col.id === columnId) {
-          return {
-            ...col,
-            cardIds: col.cardIds.filter(id => id !== card.id)
-          };
-        }
-        return col;
-      })
-    };
-
-    // Also remove from the cards collection
-    const { [card.id]: removedCard, ...remainingCards } = updatedBoard.cards;
-    updatedBoard.cards = remainingCards;
-
-    if (setBoard) {
-      setBoard(updatedBoard);
-    }
-
-    if (logActivity) {
-      logActivity(card.id, "Deleted card");
-    }
-
+    deleteCard(card.id, columnId);
     onClose();
   };
 
   // Archive card
   const handleArchive = () => {
-    if (!card || !board || !setBoard || !logActivity || !columnId || !saveBoard) return;
+    if (!card || !board || !columnId) return;
 
     // Find the card to archive
     let cardToArchive = board.cards[card.id];
@@ -478,7 +311,7 @@ const CardModal: React.FC<CardModalProps> = ({
       }
       return entry;
     }) || [];
-    cardToArchive = { ...cardToArchive, timeInColumns: updatedTimeInColumns };
+    cardToArchive = { ...cardToArchive, timeInColumns: updatedTimeInColumns, dueDate: null };
 
     // If card is in last column, save to historical collection
     const lastColumnId = board.columns[board.columns.length - 1].id;
@@ -495,34 +328,7 @@ const CardModal: React.FC<CardModalProps> = ({
       );
     }
 
-    // Remove the card from active collections
-    const { [card.id]: _removed, ...remainingActiveCards } = board.cards;
-
-    // Deduplicate archived IDs and cards
-    const newArchivedIds = board.archivedCardIds?.includes(card.id)
-      ? board.archivedCardIds
-      : [...(board.archivedCardIds || []), card.id];
-    const newArchivedList = board.archivedCards?.some(c => c.id === card.id)
-      ? board.archivedCards
-      : [...(board.archivedCards || []), cardToArchive];
-
-    // Build the new board state
-    const updatedBoard = {
-      ...board,
-      columns: board.columns.map(col => col.id === columnId
-        ? { ...col, cardIds: col.cardIds.filter(id => id !== card.id) }
-        : col
-      ),
-      cards: remainingActiveCards,
-      archivedCardIds: newArchivedIds,
-      archivedCards: newArchivedList,
-    };
-
-    // Update and persist
-    setBoard(updatedBoard);
-    saveBoard();
-
-    logActivity(card.id, "Archived card");
+    archiveCard(cardToArchive, columnId);
     onClose();
   };
 
@@ -631,7 +437,6 @@ const CardModal: React.FC<CardModalProps> = ({
     }
   };
 
-  // Dummy function for generating time estimate
   const generateTimeEstimate = async () => {
     try {
       setIsGeneratingTimeEstimate(true);
@@ -666,25 +471,6 @@ const CardModal: React.FC<CardModalProps> = ({
       setIsGeneratingTimeEstimate(false);
     }
   };
-
-  // Add a useEffect to ensure the card data is fresh 
-  useEffect(() => {
-    if (isOpen && card && board?.cards) {
-      // Get latest card data directly from board
-      const freshCard = board.cards[card.id];
-
-      if (freshCard) {
-        // If data differs significantly, request parent component to update
-        if (freshCard.movementHistory?.length !== card.movementHistory?.length) {
-          console.log('Card data has changed significantly since modal opened');
-          if (onCardChange) {
-            console.log('Updating modal with fresh card data');
-            onCardChange(freshCard);
-          }
-        }
-      }
-    }
-  }, [isOpen, card, board, onCardChange]);
 
   const displayTimeEstimate = timeEstimate?.total;
 
@@ -806,7 +592,7 @@ const CardModal: React.FC<CardModalProps> = ({
                       className="card-input"
                     >
                       <option value="">Select a user...</option>
-                      {getSharedUsers()
+                      {board?.users
                         .filter(user => !assignedUsers.includes(user.id))
                         .map(user => (
                           <option key={user.id} value={user.id}>

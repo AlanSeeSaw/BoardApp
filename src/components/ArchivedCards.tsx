@@ -1,9 +1,9 @@
 import React from 'react';
-import { Card as CardType } from '../types';
+import { Card } from '../types';
 import ReactMarkdown from 'react-markdown';
 
 interface ArchivedCardsProps {
-  archivedCards: CardType[];
+  archivedCards: Card[];
   onRestore: (cardId: string) => void;
 }
 

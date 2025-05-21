@@ -1,5 +1,5 @@
-import { Firestore, doc, setDoc, Timestamp, getDoc } from 'firebase/firestore';
-import { CardType, BoardType, HistoricalCardType, AggregatedTimeInColumn } from '../types';
+import { Firestore, doc, setDoc, Timestamp, getDoc, deleteDoc } from 'firebase/firestore';
+import { Card, Board, HistoricalCard, AggregatedTimeInColumn } from '../types';
 import { calculateAggregatedTimeInColumns } from '../utils/cardUtils';
 
 /**
@@ -13,8 +13,8 @@ import { calculateAggregatedTimeInColumns } from '../utils/cardUtils';
 export async function saveToHistoricalCollection(
     db: Firestore,
     userId: string,
-    cardToSave: CardType,
-    board: BoardType,
+    cardToSave: Card,
+    board: Board,
 ): Promise<void> {
     console.log(`[Debug] Attempting to save card ${cardToSave.id} to historical collection for board ${board.id} under user ${userId}`);
 
@@ -31,7 +31,7 @@ export async function saveToHistoricalCollection(
             actionTimestamp
         );
 
-        const historicalCardData: HistoricalCardType = {
+        const historicalCardData: HistoricalCard = {
             id: cardToSave.id,
             title: cardToSave.title,
             description: cardToSave.description,
@@ -48,7 +48,7 @@ export async function saveToHistoricalCollection(
 
         // Remove undefined properties before saving to Firestore
         Object.keys(historicalCardData).forEach(key => {
-            const k = key as keyof HistoricalCardType;
+            const k = key as keyof HistoricalCard;
             if (historicalCardData[k] === undefined) {
                 delete historicalCardData[k];
             }
@@ -64,5 +64,24 @@ export async function saveToHistoricalCollection(
 
     } catch (error) {
         console.error(`[Debug] Error in saveToHistoricalCollection for card ${cardToSave.id} under board ${board.id}:`, error);
+    }
+}
+
+export async function deleteHistoricalCard(
+    db: Firestore,
+    userId: string,
+    boardId: string,
+    cardId: string
+): Promise<void> {
+    if (!userId || !boardId || !cardId || !db) {
+        console.error("[Debug] Missing required parameters for deleteHistoricalCard", { userId, boardId, cardId, db });
+        return;
+    }
+    try {
+        const historicalCardRef = doc(db, 'users', userId, 'boards', boardId, 'historicalCards', cardId);
+        await deleteDoc(historicalCardRef);
+        console.log(`[Debug] Deleted historical card ${cardId} from board ${boardId} for user ${userId}`);
+    } catch (error) {
+        console.error(`[Debug] Error deleting historical card ${cardId} from board ${boardId}:`, error);
     }
 } 

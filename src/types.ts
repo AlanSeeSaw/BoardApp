@@ -1,14 +1,13 @@
 import { User as FirebaseUser } from 'firebase/auth';
+import { FieldValue, Timestamp } from 'firebase/firestore';
 
 // User types - support both Firebase User and simplified version
 export type FirebaseUserType = FirebaseUser;
 
 export interface User {
-  uid: string;
+  id: string;
   email: string;
-  displayName: string;
-  name?: string;
-  id?: string;
+  name: string;
 }
 
 // Enums and simple types
@@ -46,14 +45,14 @@ export interface CardMovement {
   fromColumnId: string;
   toColumnId: string;
   movedAt: Date;
-  movedBy: string;
+  movedBy: User["name"];
 }
 
 // 🆕 Time spent in columns
 export interface CardTimeInColumn {
   columnId: string;
-  enteredAt: Date | number; // Allow for timestamp numbers too
-  exitedAt?: Date | number; // null if still in the column
+  enteredAt: Date;
+  exitedAt: Date | null; // null if still in the column
   durationMs?: number;   // optional precomputed duration
 }
 
@@ -75,20 +74,18 @@ export interface TimeEstimate {
   columns: Record<string, ColumnEstimate>;
 }
 
-export interface CardType {
+export interface Card {
   id: string;
   title: string;
   description: string;
   priority: Priority;
   type: IssueType;
-  created: Date | number;
-  updated: Date | number;
-  dueDate?: string | Date | number | null;
+  createdAt: Date;
+  updatedAt: Date;
+  dueDate: string | Date | number | null; // TODO: determine typing
   labels?: CardLabel[];
   checklist?: ChecklistItem[];
-  isSelected?: boolean;
-  archived?: boolean;
-  assignedUsers?: string[];
+  assignedUsers?: User["id"][];
 
   // 🆕 Card tracking data
   currentColumnId: string;
@@ -100,76 +97,77 @@ export interface CardType {
   devTimeEstimate?: string;
 
   // 🆕 Optional LLM time estimates per column and total
-  timeEstimate?: TimeEstimate;
+  timeEstimate?: TimeEstimate | null;
 }
 
-export interface ColumnType {
+export interface Column {
   id: string;
   title: string;
   category?: ColumnCategory;
   wipLimit: number;
   isCollapsed?: boolean;
   isExpedite?: boolean;
-  cardIds: string[]; // Make required (not optional) to fix TypeScript errors
+  cardIds: string[];
   timeEstimationEnabled?: boolean;
   description?: string;
 }
 
-export interface Activity {
-  id: string;
-  cardId: string;
-  action: string;
-  timestamp: Date | number;
-  userName?: string;
-}
-
-export interface BoardMetadata {
-  id: string;
+// Typing used for all boards (useBoards.ts).
+// Has board metadata for all shared and owned boards.
+// Any fields that are marked with a ? are not populated for owned boards.
+export interface Boards {
+  id: string; // The Board ID
   title: string;
-  createdAt: Date | number;
-  updatedAt: Date | number;
-  isShared?: boolean;
-  ownerEmail?: string;
-  ownerName?: string;
-  ownerUid?: string;
-  originalBoardPath?: string;
-}
+  ownerId: string;
+  ownerEmail: string;
+  ownerName: string;
+  createdAt: Date;
+  updatedAt: Date;
 
-export interface BoardSharing {
-  userId?: string;
-  email: string;
-  role: 'viewer' | 'editor' | 'admin';
-  addedAt: Date | number;
-}
+  isShared?: boolean; // For convience, to know if the board is shared or owned. Only stored locally.
 
-export interface BoardType {
+  // All fields below are only populated for shared boards (if isShared is true)
+  originalBoardPath?: string; // Used for shared boards fields
+  sharedOn?: Date;
+  recipientEmail?: string; // The email of the recipient
+}
+// Ensure Board and BoardMetadata are in sync
+export interface Board {
   id: string;
   title: string;
   ownerId: string;
-  cards: {
-    [cardId: string]: CardType;
-  };
-  columns: ColumnType[];
-  archivedCardIds: string[];
-  activities: Activity[];
-  shared?: string[];
-  ownerEmail?: string;
-  ownerName?: string;
-  originalBoardPath?: string;
+  ownerEmail: string;
+  ownerName: string;
+  createdAt: Date;
+  updatedAt: Date;
+
   users: User[];
-  lastMoveTimestamp?: number;
-  clientTimestamp?: number;
-  archivedCards?: CardType[];
-  movementHistory?: CardMovement[];
+  cards: {
+    [cardId: string]: Card;
+  };
+  columns: Column[];
+  archivedCards: Card[];
 }
 
-// Aliases for backward compatibility
-export type Card = CardType;
-export type Column = ColumnType;
-export type Board = BoardType;
+// TODO: Theoeritecally I need to update all the subtypes to use timestamp instead of Date. TBD
+export interface FirebaseBoard {
+  id: string;
+  title: string;
+  ownerId: string;
+  ownerEmail: string;
+  ownerName: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  users: User[];
+  cards: {
+    [cardId: string]: Card;
+  };
+  columns: Column[];
+  archivedCards: Card[];
+}
 
 // 🆕 Historical Card Type for long-term storage and analysis
-export interface HistoricalCardType {
+export interface HistoricalCard {
   id: string; // Original card ID
   title: string;
   description: string;

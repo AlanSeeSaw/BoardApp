@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { BoardType, ColumnType } from '../types';
+import { Board, Column } from '../types';
 import './ProjectSettingsPanel.css';
 
 interface ProjectSettingsPanelProps {
-    board: BoardType;
-    onSave: (columns: ColumnType[]) => void;
+    board: Board;
+    onSave: (columns: Column[]) => void;
     onClose: () => void;
 }
 
 const ProjectSettingsPanel: React.FC<ProjectSettingsPanelProps> = ({ board, onSave, onClose }) => {
-    const [columns, setColumns] = useState<ColumnType[]>(board.columns);
+    const [columns, setColumns] = useState<Column[]>(board.columns);
 
     const toggleEnabled = (id: string) => {
         setColumns(prevCols => {

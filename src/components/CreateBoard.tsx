@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 
-interface BoardDialogProps {
+interface CreateBoardProps {
   isOpen: boolean;
   onClose: () => void;
   onCreateBoard: (title: string) => void;
 }
 
-const BoardDialog: React.FC<BoardDialogProps> = ({ isOpen, onClose, onCreateBoard }) => {
+const CreateBoard: React.FC<CreateBoardProps> = ({ isOpen, onClose, onCreateBoard }) => {
   const [title, setTitle] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -51,4 +50,4 @@ const BoardDialog: React.FC<BoardDialogProps> = ({ isOpen, onClose, onCreateBoar
   );
 };
 
-export default BoardDialog;
+export default CreateBoard;

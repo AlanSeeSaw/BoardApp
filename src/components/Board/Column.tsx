@@ -3,7 +3,6 @@ import { useDroppable } from '@dnd-kit/core';
 
 import { Column as ColumnType, Board, Card as CardType, IssueType, Priority } from '../../types';
 import { ISSUE_TYPES, PRIORITIES } from '../../constants/initialBoard';
-import { v4 as uuidv4 } from 'uuid';
 import ColumnCapacity from './ColumnCapacity';
 import Card from '../Cards/Card';
 import ExpeditePane from './ExpeditePane'; // Import ExpeditePane
@@ -12,25 +11,25 @@ import NewCard from '../Cards/NewCard'; // Import the NewCard component
 interface ColumnProps {
   column: ColumnType;
   board: Board;
-  setBoard: React.Dispatch<React.SetStateAction<Board>>;
   selectedCards: string[];
   toggleCardSelection: (cardId: string, isSelected: boolean) => void;
-  logActivity: (cardId: string, action: string) => void;
   activeDragId?: string | null;
   showExpeditePane?: boolean;
-  updateCardMovement?: (cardId: string, fromColumnId: string, toColumnId: string) => void;
+  deleteColumn: (columnId: string) => void;
+  updateColumnTitle: (columnId: string, newTitle: string) => void;
+  addCard: (card: CardType, columnId: string) => void;
 }
 
-const Column: React.FC<ColumnProps> = ({ 
-  column, 
-  board, 
-  setBoard, 
+const Column: React.FC<ColumnProps> = ({
+  column,
+  board,
   selectedCards,
   toggleCardSelection,
-  logActivity,
   activeDragId,
   showExpeditePane = false, // Default to false
-  updateCardMovement
+  deleteColumn,
+  updateColumnTitle,
+  addCard,
 }) => {
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState('');
@@ -48,7 +47,7 @@ const Column: React.FC<ColumnProps> = ({
       .map(id => board.cards[id])
       .filter(Boolean); // Filter out any undefined cards
   };
-  
+
   // Get column cards
   const columnCards = useMemo(() => {
     return getCardsFromIds(column.cardIds || []);
@@ -58,7 +57,7 @@ const Column: React.FC<ColumnProps> = ({
   // Separate emergency cards from regular cards with more careful handling
   const emergencyCards = useMemo(() => {
     const filtered = columnCards.filter(card => card.priority === 'emergency');
-    
+
     return filtered;
   }, [columnCards, column.title]);
 
@@ -92,11 +91,10 @@ const Column: React.FC<ColumnProps> = ({
       setTimeout(() => setShowWipError(false), 3000);
       return;
     }
-    
+
     setIsAddingCard(true);
   };
 
-  // Updated to work with normalized structure
   const handleSaveCard = () => {
     if (newCardTitle.trim() === '') return;
 
@@ -107,45 +105,30 @@ const Column: React.FC<ColumnProps> = ({
       return;
     }
 
+    // Build the new card object
     const newCard: CardType = {
-      id: uuidv4(),
+      id: (window as any).uuidv4 ? (window as any).uuidv4() : require('uuid').v4(),
       title: newCardTitle,
       description: newCardDescription,
       type: newCardType,
       priority: newCardPriority,
-      created: new Date(),
-      updated: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      dueDate: null,
       labels: [],
       checklist: [],
-      isSelected: false,
+      assignedUsers: [],
       currentColumnId: column.id,
+      movementHistory: [],
+      timeInColumns: [
+        {
+          columnId: column.id,
+          enteredAt: new Date(),
+          exitedAt: null,
+        },
+      ],
     };
-
-    // Use functional state update for consistency with normalized structure
-    setBoard(prevBoard => {
-      const newBoard = {...prevBoard};
-      
-      // Add card to cards map
-      newBoard.cards = {
-        ...newBoard.cards,
-        [newCard.id]: newCard
-      };
-      
-      // Add card ID to the column
-      newBoard.columns = newBoard.columns.map(col => {
-        if (col.id === column.id) {
-          return {
-            ...col,
-            cardIds: [...col.cardIds, newCard.id]
-          };
-        }
-        return col;
-      });
-      
-      return newBoard;
-    });
-
-    logActivity(newCard.id, `Added to ${column.title}`);
+    addCard(newCard, column.id);
     setNewCardTitle('');
     setNewCardDescription('');
     setNewCardType('task');
@@ -168,22 +151,7 @@ const Column: React.FC<ColumnProps> = ({
 
   const handleSaveTitle = () => {
     if (editedTitle.trim() === '') return;
-
-    const updatedBoard = {
-      ...board,
-      columns: board.columns.map((col) => {
-        if (col.id === column.id) {
-          return {
-            ...col,
-            title: editedTitle,
-          };
-        }
-        return col;
-      }),
-    };
-
-    setBoard(updatedBoard);
-    logActivity('board', `Renamed column from ${column.title} to ${editedTitle}`);
+    updateColumnTitle(column.id, editedTitle);
     setIsEditingTitle(false);
   };
 
@@ -198,25 +166,7 @@ const Column: React.FC<ColumnProps> = ({
       );
       if (!confirmDelete) return;
     }
-
-    // Updated to work with normalized structure
-    setBoard(prevBoard => {
-      const deletedCardIds = column.cardIds;
-      
-      // Create a copy of the cards object without the deleted cards
-      const updatedCards = {...prevBoard.cards};
-      deletedCardIds.forEach(cardId => {
-        delete updatedCards[cardId];
-      });
-      
-      return {
-        ...prevBoard,
-        cards: updatedCards,
-        columns: prevBoard.columns.filter(col => col.id !== column.id)
-      };
-    });
-    
-    logActivity('board', `Deleted column: ${column.title}`);
+    deleteColumn(column.id);
   };
 
   return (
@@ -246,49 +196,44 @@ const Column: React.FC<ColumnProps> = ({
           </div>
         )}
       </div>
-      
+
       {showWipError && (
         <div className="wip-limit-error">
           WIP limit exceeded. This column is at capacity.
         </div>
       )}
-      
+
       {/* Show ExpeditePane based on the global flag, not just local emergency cards */}
       {!isCollapsed && showExpeditePane && (
         <ExpeditePane
           columnId={column.id}
           cards={emergencyCards} // Still pass only this column's emergency cards
           board={board}
-          setBoard={setBoard}
           toggleCardSelection={toggleCardSelection}
           selectedCards={selectedCards}
-          logActivity={logActivity}
           activeDragId={activeDragId}
           columnTitle={column.title}
         />
       )}
-      
-      <div 
+
+      <div
         ref={setNodeRef}
         className={`card-list ${isOver ? 'dropping-zone' : ''} ${isCollapsed ? 'collapsed' : ''}`}
         data-column-id={column.id} // Add data attribute for better debugging
       >
         {!isCollapsed && regularCards.map((card, index) => (
-          <Card 
-            key={card.id} 
+          <Card
+            key={card.id}
             card={card}
             index={index}
-            columnId={column.id} 
-            board={board} 
-            setBoard={setBoard}
+            columnId={column.id}
+            board={board}
             isSelected={selectedCards.includes(card.id)}
             toggleSelection={toggleCardSelection}
-            logActivity={logActivity}
             activeDragId={activeDragId}
-            updateCardMovement={updateCardMovement}
           />
         ))}
-        
+
         {!isCollapsed && isAddingCard && (
           <NewCard
             newCardType={newCardType}
@@ -306,10 +251,10 @@ const Column: React.FC<ColumnProps> = ({
           />
         )}
       </div>
-      
+
       {!isCollapsed && !isAddingCard && (
-        <button 
-          className={`add-card-button ${wouldExceedWipLimit(column) ? 'disabled' : ''}`} 
+        <button
+          className={`add-card-button ${wouldExceedWipLimit(column) ? 'disabled' : ''}`}
           onClick={handleAddCard}
           disabled={wouldExceedWipLimit(column)}
         >
@@ -320,18 +265,4 @@ const Column: React.FC<ColumnProps> = ({
   );
 };
 
-export default React.memo(Column, (prevProps, nextProps) => {
-  // Re-render if the board's clientTimestamp has changed
-  if (prevProps.board.clientTimestamp !== nextProps.board.clientTimestamp) {
-    return false; // Return false to trigger re-render
-  }
-  
-  // Only skip re-render if these conditions are met
-  return (
-    prevProps.column.id === nextProps.column.id &&
-    prevProps.column.title === nextProps.column.title &&
-    prevProps.column.cardIds.length === nextProps.column.cardIds.length &&
-    prevProps.column.cardIds.every(id => nextProps.column.cardIds.includes(id)) &&
-    nextProps.column.cardIds.every(id => prevProps.column.cardIds.includes(id))
-  );
-});
+export default React.memo(Column);

@@ -1,11 +1,10 @@
 import React from 'react';
 import { SearchBar } from '../Board/SearchBar';
-import { BoardMetadata, User } from '../../types';
+import { Boards, User } from '../../types';
 import './Header.css';
+import { useBoard } from '../../hooks/useBoard';
 
 interface HeaderProps {
-  theme: 'dark' | 'light';
-  setTheme: (theme: 'dark' | 'light') => void;
   showStats: boolean;
   setShowStats: (show: boolean) => void;
   showArchived: boolean;
@@ -14,18 +13,16 @@ interface HeaderProps {
   setShowSettings: (show: boolean) => void;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
-  currentBoardId: string;
-  handleBoardSelection: (boardId: string) => void;
-  availableBoards: BoardMetadata[];
-  setIsBoardDialogOpen: (isOpen: boolean) => void;
+  currentBoardId: string | null;
+  updateActiveBoard: (boardId: string) => void;
+  availableBoards: Boards[];
+  setIsCreateBoardOpen: (isOpen: boolean) => void;
   setIsSharingDialogOpen: (isOpen: boolean) => void;
   isSharedBoard: boolean;
   user: User | null;
 }
 
 const Header: React.FC<HeaderProps> = ({
-  theme,
-  setTheme,
   showStats,
   setShowStats,
   showArchived,
@@ -35,26 +32,33 @@ const Header: React.FC<HeaderProps> = ({
   searchTerm,
   setSearchTerm,
   currentBoardId,
-  handleBoardSelection,
+  updateActiveBoard,
   availableBoards,
-  setIsBoardDialogOpen,
+  setIsCreateBoardOpen,
   setIsSharingDialogOpen,
   isSharedBoard,
   user
 }) => {
+  const { updateUserInfoToBoard } = useBoard(user, currentBoardId, isSharedBoard);
+  // TODO: Refactor at some point. this is just a workaround for the bad sharing system
+  const handleUpdateActiveBoard = (boardId: string) => {
+    updateActiveBoard(boardId);
+    updateUserInfoToBoard(user!);
+  }
+
   return (
     <header className="App-header">
       <div className="header-content">
         <div className="header-left">
           <select
-            value={currentBoardId}
-            onChange={(e) => handleBoardSelection(e.target.value)}
-            className={`board-selector ${theme}`}
+            value={currentBoardId ?? ''}
+            onChange={(e) => handleUpdateActiveBoard(e.target.value)}
+            className={`board-selector`}
           >
             <option value="">Select a board...</option>
             {availableBoards.map((board) => (
               <option
-                key={`board-${board.id}${board.isShared ? '-shared' : ''}`}
+                key={`board-${board.id}`}
                 value={board.id}
               >
                 {board.title} {board.isShared ? '(Shared)' : ''}
@@ -62,50 +66,43 @@ const Header: React.FC<HeaderProps> = ({
             ))}
           </select>
           <button
-            onClick={() => setIsBoardDialogOpen(true)}
-            className={`header-button ${theme}`}
+            onClick={() => setIsCreateBoardOpen(true)}
+            className={`header-button`}
           >
             + New Board
           </button>
           {currentBoardId && !isSharedBoard && (
             <button
               onClick={() => setIsSharingDialogOpen(true)}
-              className={`header-button ${theme}`}
+              className={`header-button`}
             >
               Share Board
             </button>
           )}
         </div>
-        <div className={`header-right ${theme}`}>
-          <div className={`header-controls ${theme}`}>
-            <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} theme={theme} />
+        <div className={`header-right`}>
+          <div className={`header-controls`}>
+            <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
             <button
-              className={`header-button ${showArchived ? 'active' : ''} ${theme}`}
+              className={`header-button ${showArchived ? 'active' : ''}`}
               onClick={() => setShowArchived(!showArchived)}
               title={showArchived ? "Hide archived cards" : "Show archived cards"}
             >
               {showArchived ? "Hide Archived" : "Show Archived"}
             </button>
             <button
-              className={`header-button ${showStats ? 'active' : ''} ${theme}`}
+              className={`header-button ${showStats ? 'active' : ''}`}
               onClick={() => setShowStats(!showStats)}
               title={showStats ? "Hide stats panel" : "Show stats panel"}
             >
               {showStats ? "Hide Stats" : "Show Stats"}
             </button>
             <button
-              className={`header-button ${showSettings ? 'active' : ''} ${theme}`}
+              className={`header-button ${showSettings ? 'active' : ''}`}
               onClick={() => setShowSettings(!showSettings)}
               title={showSettings ? "Hide Project Settings" : "Show Project Settings"}
             >
               {showSettings ? "Hide Settings" : "Settings"}
-            </button>
-            <button
-              className={`header-button ${theme}`}
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-            >
-              {theme === 'dark' ? "Light Mode" : "Dark Mode"}
             </button>
           </div>
           {user && (

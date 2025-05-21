@@ -8,11 +8,8 @@ interface ExpediteProps {
   columnId: string; // Add columnId prop
   cards: CardType[];
   board: Board;
-  setBoard: React.Dispatch<React.SetStateAction<Board>>;
   toggleCardSelection: (cardId: string, isSelected: boolean) => void;
   selectedCards: string[];
-  logActivity: (cardId: string, action: string) => void;
-  updateCard?: (cardId: string, updatedValues: Partial<CardType>) => void;
   activeDragId?: string | null;
   columnTitle: string; // Add column title for display
 }
@@ -22,11 +19,8 @@ const ExpeditePane: React.FC<ExpediteProps> = ({
   columnId,
   cards, 
   board, 
-  setBoard,
   toggleCardSelection,
   selectedCards,
-  logActivity,
-  updateCard,
   activeDragId,
   columnTitle
 }) => {
@@ -89,10 +83,8 @@ const ExpeditePane: React.FC<ExpediteProps> = ({
             index={index}
             columnId={columnId}
             board={board}
-            setBoard={setBoard}
             isSelected={isSelected(card.id)}
             toggleSelection={toggleCardSelection}
-            logActivity={logActivity}
             isExpedited={true}
             activeDragId={activeDragId}
           />
